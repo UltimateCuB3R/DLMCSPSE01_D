@@ -1,1 +1,1 @@
-Projekt: Software Enginee-ring (DLMCSPSE01_D)
+Projekt: Software Engineering (DLMCSPSE01_D)
