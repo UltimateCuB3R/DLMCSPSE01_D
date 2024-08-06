@@ -2,8 +2,8 @@
 
 import data
 
-DATABASE = 'app/data/main.db'
-DB_DEF = 'app/data/db_def.xml'
+DATABASE = 'data/main.db'
+DB_DEF = 'data/db_def.xml'
 
 if __name__ == '__main__':
     print('Jan Sauerland')
