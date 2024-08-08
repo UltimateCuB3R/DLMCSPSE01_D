@@ -9,8 +9,85 @@ NAME_PLAN = 'PLAN'
 NAME_CALENDAR = 'PLAN_CALENDAR'
 NAME_CATEGORY = 'CATEGORY'
 NAME_RESOURCE = 'RESOURCE'
+NAME_UNIT_PLAN = 'UNIT_PLAN'
+NAME_EXERCISE_UNIT = 'EXERCISE_UNIT'
+NAME_EXERCISE_RESOURCE = 'EXERCISE_RESOURCE'
 
-def_tables = {}
+
+# def_tables = {}
+
+
+class _DataTableDefinition:
+    """Class to hold definitions of Datatables, so every table can hold its own definition
+    """
+    _table_name: str
+    _columns = []
+    _column_types = {}
+    _column_relations = {}
+    _table_relations = {}
+    _table_keys = []
+
+    def __init__(self, name, definition):
+        """Construct a definition object out of the definitions read from XML
+
+        :param name: name of the Datatable
+        :param definition: definition as list of dictionaries/lists
+        """
+        self._table_name = name
+        self._columns = definition[0]
+        self._column_types = definition[1]
+        self._column_relations = definition[2]
+        self._table_relations = definition[3]
+        self._table_keys = definition[4]
+
+    def get_name(self):
+        """Get the name of the table
+
+        :return: name of the table
+        """
+        return self._table_name
+
+    def get_columns(self):
+        """Get all the columns of the table, including column ID
+
+        :return: all columns of the table
+        """
+        return self._columns
+
+    def get_column_types(self):
+        """Get all type definitions of the columns, excluding column ID
+
+        :return: all type definitions w/o ID
+        """
+        return self._column_types
+
+    def get_column_relations(self):
+        """Get all relation definitions of the columns
+
+        :return: all relation definitions of the columns
+        """
+        return self._column_relations
+
+    def get_table_relations(self):
+        """Get all the relations to other tables
+
+        :return: relations to other tables
+        """
+        return self._table_relations
+
+    def get_table_keys(self):
+        """Get all key fields of the table
+
+        :return: all key fields
+        """
+        return self._table_keys
+
+    def has_table_keys(self):
+        """Check if table has table keys defined
+
+        :return: True if table keys are existent, False if not.
+        """
+        return len(self._table_keys) > 0
 
 
 class _DataTable:
@@ -19,31 +96,28 @@ class _DataTable:
 
     _name: str
     _data: pd.DataFrame
-    _dependent_tables: {}
+    _definition: _DataTableDefinition
 
-    def __init__(self, sql_con, name):
+    def __init__(self, sql_con, name, definition):
         """Constructor for table object
 
         :param sql_con: sqlite connection to database
         :param name: name of table
         """
 
-        if name not in def_tables.keys():
-            # prevent creation if table name is not available in definition or if definition was not yet loaded
-            raise error.TableNotKnownError(f'Table {name} is not available in database definition!')
-        else:
-            self._name = name
+        self._name = name
 
-        self._dependent_tables = def_tables[name][2]
+        self._definition = _DataTableDefinition(name, definition)
 
         try:
             # try to read table from database
             self.read_table_sql(sql_con)
         except (ValueError, pd.errors.DatabaseError):
             # table does not exist
-            self._data = pd.DataFrame(columns=def_tables[name][0])
-            self._data.set_index(keys='ID', inplace=True, verify_integrity=True)
-            self.create_table_sql(sql_con)
+            self._data = pd.DataFrame(columns=self._definition.get_columns())
+            if self._definition.has_table_keys():
+                self._data.set_index(keys=self._definition.get_table_keys(), inplace=True, verify_integrity=True)
+            self._create_table_sql(sql_con)
 
     def read_table_sql(self, sql_con) -> pd.DataFrame:
         """Read table from database
@@ -54,10 +128,11 @@ class _DataTable:
         """
 
         self._data = pd.read_sql(f'select * from {self._name}', sql_con)
-        self._data.set_index(keys='ID', inplace=True, verify_integrity=True)
+        if self._definition.has_table_keys():
+            self._data.set_index(keys='ID', inplace=True, verify_integrity=True)
         return self._data
 
-    def create_table_sql(self, sql_con):
+    def _create_table_sql(self, sql_con):
         """Create table on database with current contents of _data
         Raises ValueError if table already exists
 
@@ -65,8 +140,13 @@ class _DataTable:
         :return: None
         """
 
-        self._data.to_sql(self._name, con=sql_con, if_exists='fail', index=True, index_label='ID',
-                          dtype=def_tables[self._name][1])
+        if self._definition.has_table_keys():
+            self._data.to_sql(self._name, con=sql_con, if_exists='fail', index=True,
+                              index_label=self._definition.get_table_keys(),
+                              dtype=self._definition.get_column_types())
+        else:
+            self._data.to_sql(self._name, con=sql_con, if_exists='fail', index=False,
+                              dtype=self._definition.get_column_types())
 
     def modify_table_sql(self, sql_con, sort=True):
         """Write current contents of _data to database
@@ -79,53 +159,67 @@ class _DataTable:
         if sort:
             self._data.sort_index(axis=0, ascending=True, kind='quicksort', inplace=True)
 
-        self._data.to_sql(self._name, con=sql_con, if_exists='replace', index=True, index_label='ID',
-                          dtype=def_tables[self._name][1])
+        if self._definition.has_table_keys():
+            self._data.to_sql(self._name, con=sql_con, if_exists='replace', index=True,
+                              index_label=self._definition.get_table_keys(),
+                              dtype=self._definition.get_column_types())
+        else:
+            self._data.to_sql(self._name, con=sql_con, if_exists='replace', index=False,
+                              dtype=self._definition.get_column_types())
 
     def delete_entry(self, entry: pd.Series) -> pd.DataFrame:
         """Delete specific entry of table
 
         :param entry: Series element to be deleted from the Dataframe
-        :return:
+        :return: complete Dataframe after modification
         """
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        else:
-            print(f'delete entry: {entry.values}')
+        elif self._definition.has_table_keys():
+            # print(f'delete entry: {entry.values}')
             self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
+        else:
+            print(f'delete entry without keys: {entry.values}')
+            self._data.drop(self._data[self._data == entry].dropna(how='all').index, axis='rows', inplace=True)
         return self._data
 
     def add_entry(self, entry: pd.Series) -> pd.DataFrame:
         """Add single entry to the table
 
         :param entry: Series element to be added to the Dataframe
-        :return:
+        :return: complete Dataframe after modification
         """
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
         else:
-            # ID will be determined dynamically
-            if len(self._data.index) == 0:
-                entry['ID'] = 0
+            if self._definition.has_table_keys():
+                # ID will be determined dynamically
+                if len(self._data.index) == 0:
+                    entry['ID'] = 0
+                else:
+                    entry['ID'] = self._data.index.max() + 1
+                # print(f'add entry: {entry.values}')
+                self._data.loc[entry['ID']] = entry
             else:
-                entry['ID'] = self._data.index.max() + 1
-            print(f'add entry: {entry.values}')
-            self._data.loc[entry['ID']] = entry
+                # if table has no ID, just add the entry to the end of the Dataframe
+                self._data.loc[len(self._data.index)] = entry
         return self._data
 
     def modify_entry(self, entry: pd.Series) -> pd.DataFrame:
         """Modify a single entry of the table
 
-        :param entry:
-        :return:
+        :param entry: Series element to be modified
+        :return: complete Dataframe after modification
         """
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
+        elif self._definition.has_table_keys():
+            raise error.ForbiddenActionError(f'Modify is not allowed on this type of table!')
         else:
-            print(f'modify entry: {entry.values}')
+            # print(f'modify entry: {entry.values}')
             try:
                 for col in self._data.columns:
                     self._data.at[entry['ID'], col] = entry[col]
@@ -133,6 +227,20 @@ class _DataTable:
                 raise error.NoDataFoundError(f'KeyError in modify_entry for {entry}')
 
         return self._data
+
+    def lookup_table_by_column(self, name, values) -> pd.DataFrame:
+        """Lookup all entries in a table where the column values match the given values
+
+        :param name: column name of table
+        :param values: list of values to search for
+        :return: resulting data as Dataframe
+        """
+
+        if name not in self._definition.get_columns():
+            raise error.ColumnNotKnownError(f'column {name} is not known for table {self._name}!')
+        else:
+            result_data = self._data.loc[self._data[name].isin(values)]
+            return result_data
 
     def get_table(self) -> pd.DataFrame:
         """Get dataframe of table
@@ -142,22 +250,13 @@ class _DataTable:
 
         return self._data
 
-    def lookup_table(self, table, values) -> pd.DataFrame:
-        columns = [col for col, value in self._dependent_tables.items() if value == table]
+    def get_definition(self) -> _DataTableDefinition:
+        """Get the definition of this DataTable
 
-        if len(columns) > 0:
-            for col in columns:
-                result_data = self._data.loc[self._data[col].isin(values)]
-                return result_data
-        else:
-            raise error.TableNotKnownError(f'table {table} is not a dependent table for {self._name}')
-
-    def get_dependent_tables(self):
-        """Get dependent tables of this table
-
-        :return: list of dependent tables
+        :return: definition of this DataTable
         """
-        return self._dependent_tables
+
+        return self._definition
 
     def __check_columns(self, row: pd.Series):
         """Check if the columns of a row have the same definition as the Dataframe
@@ -166,40 +265,12 @@ class _DataTable:
         :return: True if column definitions match, False if not
         """
 
+        # reset_index() is necessary as the ID field is present in row,
+        # but normally not in the dataframe because it is defined as the index.
         if not len(row.index.difference(self._data.reset_index().columns)) == 0:
             return False
         else:
             return True
-
-
-class _DataTableExercise(_DataTable):
-    """Class for data table EXERCISE
-    """
-
-
-class _DataTableUnit(_DataTable):
-    """Class for data table UNIT
-    """
-
-
-class _DataTablePlan(_DataTable):
-    """Class for data table PLAN
-    """
-
-
-class _DataTableCalendar(_DataTable):
-    """Class for data table PLAN_CALENDAR
-    """
-
-
-class _DataTableCategory(_DataTable):
-    """Class for data table CATEGORY
-    """
-
-
-class _DataTableResource(_DataTable):
-    """Class for data table RESOURCE
-    """
 
 
 class DatabaseConnector:
@@ -207,12 +278,14 @@ class DatabaseConnector:
     """
 
     _sql_con: sqlite3.Connection
-    _data_tables: dict[str, _DataTable]
+    _data_tables: {}
     _instance = None
+    _table_columns = {}
 
     def __init__(self, database: str, db_def: str):
         """Create a sqlite3 connection to a SQL database.
         If the database is not existing, it will be automatically generated as an empty database.
+        Definition file as XML will be read and used to create the DataTable objects.
 
         :param database: path to database file
         :param db_def: path to database definition file
@@ -220,13 +293,11 @@ class DatabaseConnector:
 
         print(f'init - db:{database} - def:{db_def}')
         self._sql_con = sqlite3.connect(database)
-        _read_db_definition(db_def)
-        self._data_tables = {NAME_EXERCISE: _DataTableExercise(self._sql_con, NAME_EXERCISE),
-                             NAME_UNIT: _DataTableUnit(self._sql_con, NAME_UNIT),
-                             NAME_PLAN: _DataTablePlan(self._sql_con, NAME_PLAN),
-                             NAME_CALENDAR: _DataTableCalendar(self._sql_con, NAME_CALENDAR),
-                             NAME_CATEGORY: _DataTableCategory(self._sql_con, NAME_CATEGORY),
-                             NAME_RESOURCE: _DataTableResource(self._sql_con, NAME_RESOURCE)}
+        def_tables = _read_db_definition(db_def)
+        self._data_tables = {}
+
+        for name in def_tables.keys():
+            self.__add_datatable(name, def_tables[name])
 
     def __new__(cls, database: str, db_def: str):
         """Override method to create Singleton pattern.
@@ -240,6 +311,18 @@ class DatabaseConnector:
             cls._instance = super(DatabaseConnector, cls).__new__(cls)
         return cls._instance
 
+    def __add_datatable(self, name, definition):
+        """Create a new DataTable and link it in the dict
+        Additionally save columns of table in another dict to access from outside
+
+        :param name: table name
+        :param definition: table definitions from XML file
+        :return: None
+        """
+
+        self._data_tables[name] = _DataTable(self._sql_con, name, definition)
+        self._table_columns[name] = definition[0]
+
     def get_table_content(self, name) -> pd.DataFrame:
         """Get Dataframe of a table
 
@@ -248,6 +331,15 @@ class DatabaseConnector:
         """
 
         return self._data_tables[name].get_table().copy()
+
+    def get_table_columns(self, name):
+        """Get column names of a table
+
+        :param name: Name of table
+        :return: List of column names
+        """
+
+        return self._table_columns[name]
 
     def add_entry_to_table(self, name, entry: pd.Series):
         """Add single entry to specific table
@@ -279,16 +371,34 @@ class DatabaseConnector:
 
         self._data_tables[name].modify_entry(entry)
 
-    def lookup_entry_in_table_by_relation(self, name, table, values) -> pd.DataFrame:
+    def lookup_entry_in_table(self, name, column, values) -> pd.DataFrame:
         """Search for entries in a table regarding relations
 
         :param name:
-        :param table:
+        :param column:
         :param values:
         :return: Dataframe
         """
 
-        return self._data_tables[name].lookup_table(table, values)
+        return self._data_tables[name].lookup_table_by_column(column, values)
+
+    def lookup_table_by_relation(self, values, source_table, search_table) -> pd.DataFrame:
+        """
+
+        :param values:
+        :param source_table:
+        :param search_table:
+        :return:
+        """
+
+        tables = [(key, value) for key, value in
+                  self._data_tables[source_table].get_definition().get_table_relations().items() if key == search_table]
+
+        if len(tables) > 0:
+            for table, key_id in tables:
+                return self._data_tables[table].lookup_table_by_column(key_id, values)
+        else:
+            raise error.TableNotKnownError(f'table {source_table} is not connected to table {search_table}')
 
     def commit_changes(self, name=None):
         """Commit changes made to Dataframes
@@ -319,16 +429,6 @@ class DatabaseConnector:
             self._data_tables[name].read_table_sql(self._sql_con)
 
 
-def get_table_definition(name):
-    """Get table definitions that were read from xml file
-
-    :param name: Name of table
-    :return: definitions of tables / SQL database
-    """
-
-    return def_tables[name][0]
-
-
 def _read_db_definition(db_def):
     """Read database definition out of xml file.
 
@@ -336,7 +436,7 @@ def _read_db_definition(db_def):
     :return: None
     """
 
-    global def_tables
+    # global def_tables
 
     tree = ElTr.parse(db_def)
     root = tree.getroot()
@@ -347,15 +447,25 @@ def _read_db_definition(db_def):
         columns = []
         column_types = {}
         column_relations = {}
+        table_relations = {}
+        table_keys = []
         for child in item:
-            columns.append(child.text)
-            if child.attrib['TYPE'] == 'ID':
-                # column ID should not be added to Dataframe definition, as it is defined automatically
-                continue
+            if child.tag == 'COLUMN':
+                columns.append(child.text)
+                if child.attrib['TYPE'] == 'ID':
+                    # column ID should not be added to Dataframe definition, as it is defined automatically
+                    table_keys.append(child.text)
+                    continue
+                else:
+                    column_types[child.text] = child.attrib['TYPE']
+                try:
+                    column_relations[child.text] = child.attrib['RELATION']
+                except KeyError:
+                    column_relations[child.text] = ''
+            elif child.tag == 'RELATION':
+                table_relations[child.text] = child.attrib['KEY']
             else:
-                column_types[child.text] = child.attrib['TYPE']
-            try:
-                column_relations[child.text] = child.attrib['RELATION']
-            except KeyError:
-                column_relations[child.text] = ''
-        def_tables[name] = (columns, column_types, column_relations)
+                raise error.DataMismatchError(f'Error in _read_db_definition: {child.tag} is unknown!')
+
+        def_tables[name] = (columns, column_types, column_relations, table_relations, table_keys)
+    return def_tables
