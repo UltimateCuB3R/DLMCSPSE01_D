@@ -10,11 +10,10 @@ NAME_CALENDAR = 'PLAN_CALENDAR'
 NAME_CATEGORY = 'CATEGORY'
 NAME_RESOURCE = 'RESOURCE'
 NAME_UNIT_PLAN = 'UNIT_PLAN'
+NAME_UNIT_CATEGORY = 'UNIT_CATEGORY'
 NAME_EXERCISE_UNIT = 'EXERCISE_UNIT'
 NAME_EXERCISE_RESOURCE = 'EXERCISE_RESOURCE'
-
-
-# def_tables = {}
+NAME_EXERCISE_CATEGORY = 'EXERCISE_CATEGORY'
 
 
 class _DataTableDefinition:
@@ -106,7 +105,6 @@ class _DataTable:
         """
 
         self._name = name
-
         self._definition = _DataTableDefinition(name, definition)
 
         try:
@@ -177,10 +175,8 @@ class _DataTable:
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
         elif self._definition.has_table_keys():
-            # print(f'delete entry: {entry.values}')
             self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
         else:
-            print(f'delete entry without keys: {entry.values}')
             self._data.drop(self._data[self._data == entry].dropna(how='all').index, axis='rows', inplace=True)
         return self._data
 
@@ -200,7 +196,6 @@ class _DataTable:
                     entry['ID'] = 0
                 else:
                     entry['ID'] = self._data.index.max() + 1
-                # print(f'add entry: {entry.values}')
                 self._data.loc[entry['ID']] = entry
             else:
                 # if table has no ID, just add the entry to the end of the Dataframe
@@ -219,7 +214,6 @@ class _DataTable:
         elif self._definition.has_table_keys():
             raise error.ForbiddenActionError(f'Modify is not allowed on this type of table!')
         else:
-            # print(f'modify entry: {entry.values}')
             try:
                 for col in self._data.columns:
                     self._data.at[entry['ID'], col] = entry[col]
@@ -278,7 +272,7 @@ class DatabaseConnector:
     """
 
     _sql_con: sqlite3.Connection
-    _data_tables: {}
+    _data_tables: dict[str, _DataTable]
     _instance = None
     _table_columns = {}
 
@@ -291,7 +285,6 @@ class DatabaseConnector:
         :param db_def: path to database definition file
         """
 
-        print(f'init - db:{database} - def:{db_def}')
         self._sql_con = sqlite3.connect(database)
         def_tables = _read_db_definition(db_def)
         self._data_tables = {}
@@ -322,6 +315,19 @@ class DatabaseConnector:
 
         self._data_tables[name] = _DataTable(self._sql_con, name, definition)
         self._table_columns[name] = definition[0]
+
+    def _delete_relation_tables(self, name, entry: pd.Series):
+        """Delete all entries that relate to the given entry and are safe to delete
+
+        :param name: Name of table
+        :param entry: Series element to be deleted, contains key for relation lookup
+        :return:
+        """
+
+        for table, key in self._data_tables[name].get_definition().get_table_relations().items():
+            relation_table = self.lookup_table_by_relation([entry['ID']], name, table)
+            for index, row in relation_table.iterrows():
+                self._data_tables[table].delete_entry(row)
 
     def get_table_content(self, name) -> pd.DataFrame:
         """Get Dataframe of a table
@@ -359,6 +365,10 @@ class DatabaseConnector:
         :return: None
         """
 
+        # first delete possible entries in relation tables
+        self._delete_relation_tables(name, entry)
+
+        # then delete the entry in the table itself
         self._data_tables[name].delete_entry(entry)
 
     def modify_entry_in_table(self, name, entry: pd.Series):
@@ -435,8 +445,6 @@ def _read_db_definition(db_def):
     :param db_def: path to database definition file
     :return: None
     """
-
-    # global def_tables
 
     tree = ElTr.parse(db_def)
     root = tree.getroot()
