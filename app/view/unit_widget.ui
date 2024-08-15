@@ -75,6 +75,26 @@
      <item row="3" column="1">
       <widget class="QTimeEdit" name="timeEdit_duration"/>
      </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_link_exercise">
+       <property name="text">
+        <string>Übungen verknüpfen</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QTableWidget" name="table_exercise"/>
+     </item>
+     <item row="5" column="1">
+      <widget class="QTableWidget" name="table_category"/>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_link_category">
+       <property name="text">
+        <string>Kategorien verknüpfen</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>637</width>
-    <height>705</height>
+    <width>480</width>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,6 +22,24 @@
         <string>ID</string>
        </property>
       </widget>
+     </item>
+     <item row="0" column="1">
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QLineEdit" name="lineEdit_id">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_table_name">
+         <property name="text">
+          <string>CATEGORY</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_name">
@@ -47,61 +65,23 @@
      <item row="2" column="1">
       <widget class="QTextEdit" name="textEdit_description"/>
      </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_duration">
-       <property name="text">
-        <string>Dauer</string>
-       </property>
-      </widget>
-     </item>
      <item row="3" column="1">
-      <widget class="QTimeEdit" name="timeEdit_duration"/>
+      <widget class="QTableView" name="tableView_exercise"/>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_video_url">
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_link_exercise">
        <property name="text">
-        <string>Video URL</string>
+        <string>Verknüpfte Übungen</string>
        </property>
       </widget>
      </item>
      <item row="4" column="1">
-      <widget class="QLineEdit" name="lineEdit_video_url"/>
+      <widget class="QTableView" name="tableView_unit"/>
      </item>
-     <item row="0" column="1">
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QLineEdit" name="lineEdit_id">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_table_name">
-         <property name="text">
-          <string>EXERCISE</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="5" column="1">
-      <widget class="QTableWidget" name="table_category"/>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_link_category">
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_link_unit">
        <property name="text">
-        <string>Kategorien verknüpfen</string>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="1">
-      <widget class="QTableWidget" name="table_resource"/>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_link_resource">
-       <property name="text">
-        <string>Ressourcen verknüpfen</string>
+        <string>Verknüpfte Einheiten</string>
        </property>
       </widget>
      </item>
