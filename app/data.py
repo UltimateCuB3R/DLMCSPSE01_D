@@ -439,7 +439,7 @@ class DatabaseConnector:
             self._data_tables[name].read_table_sql(self._sql_con)
 
     def build_entry_for_table(self, table_name, table_data) -> pd.Series:
-        if len(self.get_table_columns(table_name).index) == len(table_data):
+        if len(self.get_table_columns(table_name)) == len(table_data):
             return pd.Series(index=self.get_table_columns(table_name), data=table_data)
         else:
             raise error.DataMismatchError

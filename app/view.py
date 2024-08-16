@@ -1,10 +1,9 @@
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+# from PyQt5.QtGui import *
+# from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
 import sys
-import data
 
 
 class _MainWindow(QMainWindow):
@@ -20,9 +19,15 @@ class _MainWindow(QMainWindow):
 
     # translations: dict
 
-    def __init__(self, ui_file, tables, *args, **kwargs):
+    def __init__(self, tables, *args, **kwargs):
+        """
+
+        :param tables:
+        :param args:
+        :param kwargs:
+        """
         super(_MainWindow, self).__init__(*args, **kwargs)
-        uic.loadUi(ui_file, self)
+        uic.loadUi('view/main.ui', self)
         self.setWindowTitle('sportApp - main')
 
         self.main_layout = self.horizontalLayout_main_widget
@@ -31,7 +36,6 @@ class _MainWindow(QMainWindow):
         self.main_layout.addWidget(self.main_left)
         self.main_layout.addWidget(self.main_right)
         self.main_display = True
-        # self.main_left.pushButton_create.clicked.connect(self._button_main)
 
         self.detail_widgets = {}
         for table in tables:
@@ -41,32 +45,12 @@ class _MainWindow(QMainWindow):
             except FileNotFoundError:
                 continue
 
-    """def _button_main(self, s):
-        print('button_main:', s, self)
-
-        path = 'view/' + self.main_left.comboBox_tables.currentText() + '_widget.ui'
-
-        if self.main_display:
-            self.switch_main_widget(uic.loadUi(path))
-        else:
-            pass"""
-
-    """def _button_cancel(self, s):
-        print('cancel', s)
-
-        # TODO: Cancel this widget
-
-        self.switch_main_widget()"""
-
-    """def _button_save(self, s):
-        print('save', s)
-
-        # TODO: Save the data
-        print(self.current_widget.label_table_name.text())
-
-        self.switch_main_widget()"""
-
     def switch_main_widget(self, table=None):
+        """
+
+        :param table:
+        :return:
+        """
         if self.main_display:
             self.main_layout.removeWidget(self.main_left)
             self.main_left.hide()
@@ -92,39 +76,103 @@ class _MainWindow(QMainWindow):
 
 
 class MainApplication(QApplication):
+    """
+
+    """
     _main_window: _MainWindow
 
-    def __init__(self, ui_file, translations, *args, **kwargs):
+    def __init__(self, tables, *args, **kwargs):
+        """
+
+        :param tables:
+        :param args:
+        :param kwargs:
+        """
         super(MainApplication, self).__init__(sys.argv, *args, **kwargs)
-        self._main_window = _MainWindow(ui_file, translations)
+        self._main_window = _MainWindow(tables)
         self._main_window.show()
 
     def connect_main(self, s):
+        """
+
+        :param s:
+        :return:
+        """
         self._main_window.main_left.pushButton_create.clicked.connect(s)
 
+    def connect_commit(self, s):
+        """
+
+        :param s:
+        :return:
+        """
+        self._main_window.pushButton_save_db.clicked.connect(s)
+
+    def connect_revert(self, s):
+        """
+
+        :param s:
+        :return:
+        """
+        self._main_window.pushButton_revert_db.clicked.connect(s)
+
     def connect_cancel(self, tables, s):
+        """
+
+        :param tables:
+        :param s:
+        :return:
+        """
         for table in tables:
             if table in self._main_window.detail_widgets.keys():
                 self._main_window.detail_widgets[table].pushButton_cancel.clicked.connect(s)
 
     def connect_save(self, tables, s):
+        """
+
+        :param tables:
+        :param s:
+        :return:
+        """
         for table in tables:
             if table in self._main_window.detail_widgets.keys():
                 self._main_window.detail_widgets[table].pushButton_save.clicked.connect(s)
 
     def get_main_window(self) -> _MainWindow:
+        """
+
+        :return:
+        """
         return self._main_window
 
     def get_main_left(self) -> QWidget:
+        """
+
+        :return:
+        """
         return self._main_window.main_left
 
     def get_current_widget(self) -> QWidget:
+        """
+
+        :return:
+        """
         return self._main_window.current_widget
 
     def get_main_display(self) -> bool:
+        """
+
+        :return:
+        """
         return self._main_window.main_display
 
     def init_main_window(self, combobox, tree_view):
+        """
+
+        :param combobox:
+        :param tree_view:
+        :return:
+        """
         # Set Table Combobox
         self._main_window.main_left.comboBox_tables.addItems(combobox)
         # Set Widget Config
@@ -132,10 +180,19 @@ class MainApplication(QApplication):
         pass
 
     def switch_main_widget(self, table=None):
+        """
+
+        :param table:
+        :return:
+        """
         if table is None:
             self._main_window.switch_main_widget()
         else:
             self._main_window.switch_main_widget(table)
 
     def start_application(self):
+        """
+
+        :return:
+        """
         self.exec_()
