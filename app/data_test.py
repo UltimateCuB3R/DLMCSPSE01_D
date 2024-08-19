@@ -35,8 +35,8 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(data_con1, data_con2)
 
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+    # unittest.main()
 
 if __name__ == '__main__':
     print('Test run of data module')
@@ -106,3 +106,5 @@ if __name__ == '__main__':
     print(data_con.get_table_content(data.NAME_UNIT_CATEGORY))
     data_con.commit_changes()
     # print(data_con.get_table_content(data.NAME_EXERCISE_UNIT))
+
+    print(data_con.get_table_content_relation(data.NAME_UNIT))

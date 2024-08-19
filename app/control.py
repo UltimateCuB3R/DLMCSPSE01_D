@@ -20,7 +20,7 @@ class MainControl:
         self.main_tables = [data.NAME_EXERCISE, data.NAME_UNIT, data.NAME_PLAN, data.NAME_CALENDAR, data.NAME_CATEGORY,
                             data.NAME_RESOURCE]
         self.main_app = view.MainApplication(self.main_tables)
-        self.main_app.init_main_window(self.main_tables, self.get_tree_structure())
+        self.main_app.init_main_widget(self.main_tables, self.get_tree_structure())
         self._init_connectors()
 
     def _init_connectors(self):
@@ -28,7 +28,7 @@ class MainControl:
 
         :return:
         """
-        self.main_app.connect_main(self._button_main)
+        self.main_app.connect_create(self._button_main)
         self.main_app.connect_commit(self._button_commit)
         self.main_app.connect_revert(self._button_revert)
         self.main_app.connect_save(self.main_tables, self._button_save)
@@ -46,6 +46,10 @@ class MainControl:
             table = self.main_app.get_main_left().comboBox_tables.currentText()
             print(table)
             self.main_app.switch_main_widget(table)
+            # TODO: fill relation tables in widget
+            relation_tables = self.data_con.get_table_content_relation(table)
+            for table_name, table_data in relation_tables:
+                self.main_app.set_relation_table(table_name, table_data)
         else:
             pass
             # TODO: Error message: Function should not be available

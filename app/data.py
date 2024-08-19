@@ -338,6 +338,17 @@ class DatabaseConnector:
 
         return self._data_tables[name].get_table().copy()
 
+    def get_table_content_relation(self, name) -> dict[str, pd.DataFrame]:
+        """Get the contents of the related tables
+
+        :param name: Name of table
+        :return: list of Dataframes of related tables
+        """
+        relation_tables = {}
+        for table in self._data_tables[name].get_definition().get_table_relations().keys():
+            relation_tables[table] = self.get_table_content(table)
+        return relation_tables
+
     def get_table_columns(self, name):
         """Get column names of a table
 
@@ -416,6 +427,7 @@ class DatabaseConnector:
         :param name: Name of table
         :return: None
         """
+
         if name is None:
             # commit all changes
             for key in self._data_tables.keys():
@@ -430,6 +442,7 @@ class DatabaseConnector:
         :param name: Name of table
         :return: None
         """
+
         if name is None:
             # rollback all changes to what is saved on the database
             for key in self._data_tables.keys():
@@ -439,6 +452,13 @@ class DatabaseConnector:
             self._data_tables[name].read_table_sql(self._sql_con)
 
     def build_entry_for_table(self, table_name, table_data) -> pd.Series:
+        """Build the entry for the datatable from the stored definition as a Series object
+
+        :param table_name: name of table
+        :param table_data: data of table to be built into a Series object
+        :return:
+        """
+
         if len(self.get_table_columns(table_name)) == len(table_data):
             return pd.Series(index=self.get_table_columns(table_name), data=table_data)
         else:
@@ -483,5 +503,3 @@ def _read_db_definition(db_def):
 
         def_tables[name] = (columns, column_types, column_relations, table_relations, table_keys)
     return def_tables
-
-
