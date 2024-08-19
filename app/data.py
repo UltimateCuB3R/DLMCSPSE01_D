@@ -438,6 +438,12 @@ class DatabaseConnector:
             # only rollback the changes to a specific table
             self._data_tables[name].read_table_sql(self._sql_con)
 
+    def build_entry_for_table(self, table_name, table_data) -> pd.Series:
+        if len(self.get_table_columns(table_name)) == len(table_data):
+            return pd.Series(index=self.get_table_columns(table_name), data=table_data)
+        else:
+            raise error.DataMismatchError
+
 
 def _read_db_definition(db_def):
     """Read database definition out of xml file.
@@ -477,3 +483,5 @@ def _read_db_definition(db_def):
 
         def_tables[name] = (columns, column_types, column_relations, table_relations, table_keys)
     return def_tables
+
+

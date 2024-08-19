@@ -1,5 +1,42 @@
 import data
 import pandas as pd
+import unittest
+
+
+class MyTestCase(unittest.TestCase):
+    def test_something(self):
+        self.assertEqual(True, False)  # add assertion here
+
+    def test_add_entry_to_table(self):
+        pass
+
+    def test_delete_entry_from_table(self):
+        pass
+
+    def test_modify_entry_in_table(self):
+        pass
+
+    def test_commit_changes(self):
+        pass
+
+    def test_revert_changes(self):
+        pass
+
+    def test_lookup_entry_in_table(self):
+        pass
+
+    def test_lookup_table_by_relation(self):
+        pass
+
+    def test_singleton_database_connector(self):
+        data_con1 = data.DatabaseConnector(database, db_def)
+        data_con2 = data.DatabaseConnector(database, db_def)
+
+        self.assertEqual(data_con1, data_con2)
+
+
+if __name__ == '__main__':
+    unittest.main()
 
 if __name__ == '__main__':
     print('Test run of data module')
