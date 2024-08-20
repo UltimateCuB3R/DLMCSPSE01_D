@@ -223,12 +223,22 @@ class MainApplication(QApplication):
         :param table: name of the relation table
         :return: None
         """
-        table_widget = self._main_window.current_widget.findChildr(QTableWidget, f'table_{table}')
-        table_widget.setRowCount(len(table_data))
-        index = 0
-        for key, row in table_data.iterrows():
-            table_widget.setItem(index, 0, QTableWidgetItem(row['ID']))
-            index += 1
+        for table_widget in self._main_window.current_widget.findChildren(QTableWidget):
+            print(table_widget, table_widget.objectName())
+            if table_widget.objectName().lower() == f'table_{table}'.lower():
+                table_widget.setRowCount(len(table_data.index))
+                table_widget.setColumnCount(len(table_data.columns) + 1)
+                header = ['ID'] + table_data.columns.to_list()
+                table_widget.setHorizontalHeaderLabels(header)
+                index = 0
+                for key, row in table_data.iterrows():
+                    print(f'index: {index}, key: {key}, row: {row}')
+                    table_widget.setItem(index, 0, QTableWidgetItem(str(key)))
+                    col_index = 1
+                    for column in table_data.columns:
+                        table_widget.setItem(index, col_index, QTableWidgetItem(row[column]))
+                        col_index += 1
+                    index += 1
 
     def start_application(self):
         """Start the application
