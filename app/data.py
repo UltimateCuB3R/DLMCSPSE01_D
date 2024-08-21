@@ -81,12 +81,12 @@ class _DataTableDefinition:
         """
         return self._table_keys
 
-    def has_table_keys(self):
+    def has_multiple_table_keys(self):
         """Check if table has table keys defined
 
         :return: True if table keys are existent, False if not.
         """
-        return len(self._table_keys) > 0
+        return len(self._table_keys) > 1
 
 
 class _DataTable:
@@ -113,7 +113,7 @@ class _DataTable:
         except (ValueError, pd.errors.DatabaseError):
             # table does not exist
             self._data = pd.DataFrame(columns=self._definition.get_columns())
-            if self._definition.has_table_keys():
+            if self._definition.has_multiple_table_keys():
                 self._data.set_index(keys=self._definition.get_table_keys(), inplace=True, verify_integrity=True)
             self._create_table_sql(sql_con)
 
@@ -126,7 +126,7 @@ class _DataTable:
         """
 
         self._data = pd.read_sql(f'select * from {self._name}', sql_con)
-        if self._definition.has_table_keys():
+        if self._definition.has_multiple_table_keys():
             self._data.set_index(keys='ID', inplace=True, verify_integrity=True)
         return self._data
 
@@ -138,7 +138,7 @@ class _DataTable:
         :return: None
         """
 
-        if self._definition.has_table_keys():
+        if self._definition.has_multiple_table_keys():
             self._data.to_sql(self._name, con=sql_con, if_exists='fail', index=True,
                               index_label=self._definition.get_table_keys(),
                               dtype=self._definition.get_column_types())
@@ -157,7 +157,7 @@ class _DataTable:
         if sort:
             self._data.sort_index(axis=0, ascending=True, kind='quicksort', inplace=True)
 
-        if self._definition.has_table_keys():
+        if self._definition.has_multiple_table_keys():
             self._data.to_sql(self._name, con=sql_con, if_exists='replace', index=True,
                               index_label=self._definition.get_table_keys(),
                               dtype=self._definition.get_column_types())
@@ -174,7 +174,7 @@ class _DataTable:
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        elif self._definition.has_table_keys():
+        elif self._definition.has_multiple_table_keys():
             self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
         else:
             self._data.drop(self._data[self._data == entry].dropna(how='all').index, axis='rows', inplace=True)
@@ -190,7 +190,7 @@ class _DataTable:
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
         else:
-            if self._definition.has_table_keys():
+            if self._definition.has_multiple_table_keys():
                 # ID will be determined dynamically
                 if len(self._data.index) == 0:
                     entry['ID'] = 0
@@ -211,7 +211,7 @@ class _DataTable:
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        elif self._definition.has_table_keys():
+        elif self._definition.has_multiple_table_keys():
             raise error.ForbiddenActionError(f'Modify is not allowed on this type of table!')
         else:
             try:
