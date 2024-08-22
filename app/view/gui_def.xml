@@ -12,6 +12,8 @@
         <FIELD NAME="textEdit_description" COLUMN="DESCRIPTION"/>
         <FIELD NAME="timeEdit_duration" COLUMN="DURATION"/>
         <FIELD NAME="lineEdit_video_url" COLUMN="VIDEO_URL"/>
+        <TABLE NAME="table_category" REL_TABLE="EXERCISE_CATEGORY" PK="EXERCISE_ID" FK="CATEGORY_ID"/>
+        <TABLE NAME="table_resource" REL_TABLE="EXERCISE_RESOURCE" PK="EXERCISE_ID" FK="RESOURCE_ID"/>
     </WIDGET>
     <WIDGET NAME="resource_widget.ui" TABLE="RESOURCE">
         <FIELD NAME="lineEdit_id" COLUMN="ID"/>
@@ -23,10 +25,13 @@
         <FIELD NAME="lineEdit_name" COLUMN="NAME"/>
         <FIELD NAME="textEdit_description" COLUMN="DESCRIPTION"/>
         <FIELD NAME="timeEdit_duration" COLUMN="DURATION"/>
+        <TABLE NAME="table_exercise" REL_TABLE="EXERCISE_UNIT" PK="UNIT_ID" FK="EXERCISE_ID"/>
+        <TABLE NAME="table_category" REL_TABLE="UNIT_CATEGORY" PK="UNIT_ID" FK="CATEGORY_ID"/>
     </WIDGET>
     <WIDGET NAME="plan_widget.ui" TABLE="PLAN">
         <FIELD NAME="lineEdit_id" COLUMN="ID"/>
         <FIELD NAME="lineEdit_name" COLUMN="NAME"/>
         <FIELD NAME="textEdit_description" COLUMN="DESCRIPTION"/>
+        <TABLE NAME="table_unit" REL_TABLE="UNIT_PLAN" PK="PLAN_ID" FK="UNIT_ID"/>
     </WIDGET>
 </WIDGETS>

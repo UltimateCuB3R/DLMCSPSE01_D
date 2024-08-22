@@ -9,6 +9,7 @@ class MainControl:
     """Main controller class to handle the user interactions and data modifications.
 
     """
+
     data_con: data.DatabaseConnector
     main_app: view.MainApplication
     main_tables: []
@@ -20,6 +21,7 @@ class MainControl:
         :param database: path to the database file
         :param db_def: path to the database definition file
         """
+
         self.data_con = data.DatabaseConnector(database, db_def)
         self.main_tables = [data.NAME_EXERCISE, data.NAME_UNIT, data.NAME_PLAN, data.NAME_CALENDAR, data.NAME_CATEGORY,
                             data.NAME_RESOURCE]
@@ -32,6 +34,7 @@ class MainControl:
 
         :return: None
         """
+
         self.main_app.connect_create(self._button_create)
         self.main_app.connect_search(self._button_search)
         self.main_app.connect_commit(self._button_commit)
@@ -48,12 +51,14 @@ class MainControl:
 
         :return: None
         """
-        print('create:', self)
 
+        print('create:', self)
         if self.main_app.get_main_display():
             table = self.main_app.get_main_left().comboBox_tables.currentText()
             print(table)
             self.main_app.switch_main_widget(table)
+            self.main_app.enable_save_button(True)
+
             # TODO: fill relation tables in widget
             relation_tables = self.data_con.get_table_content_relation(table)
             print(f'relation_tables: {relation_tables}')
@@ -65,15 +70,13 @@ class MainControl:
                     elif table == sub_tables[1]:
                         self.main_app.set_relation_table(sub_tables[0], self.data_con.get_table_content(sub_tables[0]))
                     else:
-                        # TODO: Error message
-                        pass
+                        self.main_app.send_critical_message(
+                            f'Fehler! Beziehungen in Datenbankschema falsch gesetzt für {table}')
                 else:
-                    # TODO: Error message: wrong database scheme
-                    pass
-                pass
+                    self.main_app.send_critical_message(
+                        f'Fehler! Datenbankschema oder Programmierung falsch für {table}!')
         else:
-            pass
-            # TODO: Error message: Function should not be available
+            self.main_app.send_critical_message('Fehler! Funktion kann hier nicht ausgeführt werden!')
 
     def _button_display(self):
         """
@@ -82,7 +85,20 @@ class MainControl:
         """
 
         print('display:', self)
-        pass
+        table_name = self.main_app.get_current_widget().label_table_name.text()
+        table_rows = self.main_app.get_selected_rows_of_current_widget()
+        if len(table_rows) == 0:
+            self.main_app.send_critical_message('Fehler! Keine Zeile ausgewählt! Bitte genau eine Zeile auswählen!')
+        elif len(table_rows) > 1:
+            self.main_app.send_critical_message('Fehler! Zu viele Zeilen ausgewählt! Bitte genau eine Zeile auswählen!')
+        else:
+            # switch to chosen table widget and fill the widget with data
+            self.main_app.switch_main_widget(table_name)
+            table_data = self.data_con.get_table_content(table_name)
+            row = table_data.iloc[table_rows[0]]
+            print(row)
+            self.main_app.set_fields_of_current_widget(table_name, row, False)
+            self.main_app.enable_save_button(False)
 
     def _button_edit(self):
         """
@@ -103,9 +119,8 @@ class MainControl:
             table_data = self.data_con.get_table_content(table_name)
             row = table_data.iloc[table_rows[0]]
             print(row)
-            fields = self.main_app.get_gui_definition()[table_name][1]
-            for field in fields.keys():
-                self.main_app.set_field_in_current_widget(fields[field], row[field])
+            self.main_app.set_fields_of_current_widget(table_name, row, True)
+            self.main_app.enable_save_button(True)
 
     def _button_search(self):
         """This action is called when the search button is pressed.
@@ -113,6 +128,7 @@ class MainControl:
 
         :return: None
         """
+
         print('search:', self)
 
         if self.main_app.get_main_display():
@@ -130,6 +146,7 @@ class MainControl:
 
         :return: None
         """
+
         print('commit', self)
 
         self.data_con.commit_changes()
@@ -139,6 +156,7 @@ class MainControl:
 
         :return: None
         """
+
         print('revert', self)
 
         # TODO: Revert all changes, read data again from database
@@ -151,6 +169,7 @@ class MainControl:
 
         :return: None
         """
+
         print('cancel', self)
 
         # clear all fields of the current widget
@@ -167,6 +186,7 @@ class MainControl:
 
         :return: None
         """
+
         print('save', self)
 
         # collect all field values into a list and save it to the current table
@@ -183,6 +203,12 @@ class MainControl:
         self._save_entry(table_name, table_data)
 
         # TODO: also build and save related tables
+        relation_tables = self.main_app.get_gui_definition()[table_name][2]
+        for relation_widget_name in relation_tables.keys():
+            # get selected rows of widget with name relation_widget_name
+            self.main_app.get_selected_rows_of_current_widget(relation_widget_name)
+            # build relation table entry with keys in the right order
+            pass
 
         self.main_app.switch_main_widget()
 
@@ -192,6 +218,7 @@ class MainControl:
         :param table:
         :return:
         """
+
         # get all table contents and display connections in tree structure for TreeView
         # TODO: build tree structure for pyqt tree view
         pass
@@ -205,6 +232,7 @@ class MainControl:
         :param data_entry: list of values for the table
         :return: None
         """
+
         try:
             entry = self.data_con.build_entry_for_table(table_name, data_entry)
             if data_entry[0] == '':
@@ -225,6 +253,7 @@ class MainControl:
         :param data_relation:
         :return:
         """
+
         entry = self.data_con.build_entry_for_table(table_name, data_relation)
         if data_relation[0] == '':
             self.data_con.add_entry_to_table(table_name, entry)

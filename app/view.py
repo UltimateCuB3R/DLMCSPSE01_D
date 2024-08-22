@@ -109,6 +109,17 @@ class MainApplication(QApplication):
         self._main_window.show()
         self._gui_def = _read_gui_definition(gui_def)
 
+    def _set_field_editable(self, field_name, editable):
+        """Set a given field to be editable or not
+
+        :param field_name: name of the field in the current widget
+        :param editable: bool if the field should be editable
+        :return: None
+        """
+
+        field = self.get_current_widget().findChild(QObject, field_name)
+        field.setReadOnly(not editable)
+
     def connect_create(self, action):
         """Connect the create button of the main widget to the corresponding method
 
@@ -191,6 +202,16 @@ class MainApplication(QApplication):
             if table in self._main_window.detail_widgets.keys():
                 self._main_window.detail_widgets[table].pushButton_save.clicked.connect(action)
 
+    def enable_save_button(self, enabled):
+        """Enable or disable the save button of the current widget
+
+        :param enabled: state of the save button
+        :return: None
+        """
+
+        if not self.get_main_display():
+            self.get_current_widget().pushButton_save.setEnabled(enabled)
+
     def get_gui_definition(self):
         """Get the gui definition from xml
 
@@ -259,14 +280,19 @@ class MainApplication(QApplication):
                     selected_rows.append(row)
         return selected_rows
 
-    def get_selected_rows_of_current_widget(self) -> list:
+    def get_selected_rows_of_current_widget(self, table_widget_name='') -> dict:
         """Retrieve the selected row indices of the current table widget.
 
         :return: list of row indices that are selected
         """
-        table_widget = self.get_current_widget().findChild(QTableWidget)
-        rows = self._get_selection_of_widget(table_widget)
-        return rows
+
+        table_widgets = self.get_current_widget().findChildren(QTableWidget)
+        tables = {}
+        for table_widget in table_widgets:
+            if table_widget.objectName() == table_widget_name or table_widget_name == '':
+                rows = self._get_selection_of_widget(table_widget)
+                tables[table_widget.objectName()] = rows
+        return tables
 
     def init_main_widget(self, combobox, tree_view):
         """Initialize the main widget with values
@@ -288,6 +314,7 @@ class MainApplication(QApplication):
         :param message: text of the message to be displayed
         :return: None
         """
+
         QMessageBox.critical(self.get_current_widget(), 'ERROR', message)
 
     def send_information_message(self, message):
@@ -296,10 +323,18 @@ class MainApplication(QApplication):
         :param message: text of the message to be displayed
         :return: None
         """
+
         QMessageBox.information(self.get_current_widget(), 'INFORMATION', message)
 
     @staticmethod
     def _set_table_widget(table_widget, table_data):
+        """Set the contents of the table widget to the given table data
+
+        :param table_widget: QTableWidget object
+        :param table_data: data as Dataframe
+        :return: None
+        """
+
         table_widget.setRowCount(len(table_data.index))
         table_widget.setColumnCount(len(table_data.columns))
         table_widget.setHorizontalHeaderLabels(table_data.columns.to_list())
@@ -331,6 +366,7 @@ class MainApplication(QApplication):
         :param table: name of the relation table
         :return: None
         """
+
         for table_widget in self.get_current_widget().findChildren(QTableWidget):
             print(table_widget, table_widget.objectName())
             if table_widget.objectName().lower() == f'table_{table}'.lower():
@@ -346,6 +382,7 @@ class MainApplication(QApplication):
         :param table_data: content of the searched table
         :return: None
         """
+
         table_widget = self.get_current_widget().findChild(QTableWidget)
         print(table_widget, table_widget.objectName())
         self._set_table_widget(table_widget, table_data)
@@ -357,6 +394,7 @@ class MainApplication(QApplication):
         :param field_name: name of the PyQt field
         :return: value of the field as string
         """
+
         field = self.get_current_widget().findChild(QObject, field_name)
 
         if isinstance(field, QLineEdit):
@@ -368,6 +406,20 @@ class MainApplication(QApplication):
         else:
             self.send_critical_message('Fehler beim Lesen der Felder im aktuellen Widget!')
 
+    def set_fields_of_current_widget(self, table_name, row_data, editable=True):
+        """Set all fields of the current widget to the corresponding value from the given data
+
+        :param table_name: name of the table that is currently displayed
+        :param row_data: values that should be set into the current widget
+        :param editable: bool if a field should be editable
+        :return: None
+        """
+
+        fields = self.get_gui_definition()[table_name][1]
+        for field in fields.keys():
+            self.set_field_in_current_widget(fields[field], row_data[field])
+            self._set_field_editable(fields[field], editable)
+
     def set_field_in_current_widget(self, field_name, field_data):
         """Set a field in the current widget to the corresponding data
 
@@ -375,7 +427,9 @@ class MainApplication(QApplication):
         :param field_data: value to be set for the field
         :return: None
         """
+
         field = self.get_current_widget().findChild(QObject, field_name)
+
         if isinstance(field, QLineEdit):
             field.setText(str(field_data))
         elif isinstance(field, QTextEdit):
@@ -412,12 +466,15 @@ def _read_gui_definition(gui_def) -> dict:
         table = item.attrib['TABLE']
 
         fields = {}
+        tables = {}
         for child in item:
             if child.tag == 'FIELD':
                 fields[child.attrib['COLUMN']] = child.attrib['NAME']
+            elif child.tag == 'TABLE':
+                tables[child.attrib['NAME']] = [child.attrib['REL_TABLE'], child.attrib['PK'], child.attrib['FK']]
             else:
                 pass
 
-        def_gui[table] = [name, fields]
+        def_gui[table] = [name, fields, tables]
 
     return def_gui
