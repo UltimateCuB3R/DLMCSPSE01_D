@@ -59,7 +59,7 @@ class MainControl:
             self.main_app.switch_main_widget(table)
             self.main_app.enable_save_button(True)
 
-            # TODO: fill relation tables in widget
+            # fill the relation table widgets in the current widget
             relation_tables = self.data_con.get_table_content_relation(table)
             print(f'relation_tables: {relation_tables}')
             for table_name in relation_tables.keys():
@@ -86,7 +86,7 @@ class MainControl:
 
         print('display:', self)
         table_name = self.main_app.get_current_widget().label_table_name.text()
-        table_rows = self.main_app.get_selected_rows_of_current_widget()
+        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())
         if len(table_rows) == 0:
             self.main_app.send_critical_message('Fehler! Keine Zeile ausgewählt! Bitte genau eine Zeile auswählen!')
         elif len(table_rows) > 1:
@@ -95,10 +95,12 @@ class MainControl:
             # switch to chosen table widget and fill the widget with data
             self.main_app.switch_main_widget(table_name)
             table_data = self.data_con.get_table_content(table_name)
-            row = table_data.iloc[table_rows[0]]
-            print(row)
+
+            row = table_data.iloc[table_rows[0][0]]
             self.main_app.set_fields_of_current_widget(table_name, row, False)
             self.main_app.enable_save_button(False)
+
+            # TODO: fill relation tables
 
     def _button_edit(self):
         """
@@ -108,7 +110,7 @@ class MainControl:
 
         print('edit:', self)
         table_name = self.main_app.get_current_widget().label_table_name.text()
-        table_rows = self.main_app.get_selected_rows_of_current_widget()
+        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())
         if len(table_rows) == 0:
             self.main_app.send_critical_message('Fehler! Keine Zeile ausgewählt! Bitte genau eine Zeile auswählen!')
         elif len(table_rows) > 1:
@@ -117,10 +119,12 @@ class MainControl:
             # switch to chosen table widget and fill the widget with data
             self.main_app.switch_main_widget(table_name)
             table_data = self.data_con.get_table_content(table_name)
-            row = table_data.iloc[table_rows[0]]
-            print(row)
+
+            row = table_data.iloc[table_rows[0][0]]
             self.main_app.set_fields_of_current_widget(table_name, row, True)
             self.main_app.enable_save_button(True)
+
+            # TODO: fill relation tables
 
     def _button_search(self):
         """This action is called when the search button is pressed.
@@ -136,10 +140,8 @@ class MainControl:
             print(table)
             self.main_app.switch_main_widget('search')
             self.main_app.set_search_table(table, self.data_con.get_table_content(table))
-            # TODO: implement search for table
         else:
-            pass
-            # TODO: Error message: Function should not be available
+            self.main_app.send_critical_message('Diese Funktion kann hier nicht ausgeführt werden!')
 
     def _button_commit(self):
         """This action commits all table changes to the database
@@ -195,20 +197,36 @@ class MainControl:
         table_data = []
         for field_name in fields.keys():
             if field_name == 'ID':
-                value = int(self.main_app.get_field_of_current_widget(fields[field_name]))
+                try:
+                    value = int(self.main_app.get_field_of_current_widget(fields[field_name]))
+                except ValueError:
+                    if self.main_app.get_field_of_current_widget(fields[field_name]) == '':
+                        value = self.main_app.get_field_of_current_widget(fields[field_name])
+                    else:
+                        self.main_app.send_critical_message('Fehler! ID konnte nicht verarbeitet werden!')
+                        return
             else:
                 value = self.main_app.get_field_of_current_widget(fields[field_name])
             table_data.append(value)
-        print(table_name, table_data)
-        self._save_entry(table_name, table_data)
+        entry_id = self._save_entry(table_name, table_data)
 
-        # TODO: also build and save related tables
+        # also build and save relation table data
         relation_tables = self.main_app.get_gui_definition()[table_name][2]
         for relation_widget_name in relation_tables.keys():
             # get selected rows of widget with name relation_widget_name
-            self.main_app.get_selected_rows_of_current_widget(relation_widget_name)
-            # build relation table entry with keys in the right order
-            pass
+            selected_rows = self.main_app.get_selected_rows_of_widget(relation_widget_name)
+            # build relation table entries
+            rel_table_name = relation_tables[relation_widget_name][0]  # name of relation table
+            pk_name = relation_tables[relation_widget_name][1]  # primary key name
+            fk_name = relation_tables[relation_widget_name][2]  # foreign key name
+
+            for row in selected_rows:
+                # to get the right ID of the foreign key, the corresponding ID has to be read from the table widget
+                relation_data = {pk_name: entry_id,
+                                 fk_name: self.main_app.get_item_of_table_widget(relation_widget_name, row, 0)}
+                self._save_entry(rel_table_name, relation_data)
+
+            # TODO: delete all rows that are not selected
 
         self.main_app.switch_main_widget()
 
@@ -223,22 +241,32 @@ class MainControl:
         # TODO: build tree structure for pyqt tree view
         pass
 
-    def _save_entry(self, table_name, data_entry):
+    def _save_entry(self, table_name, data_entry) -> int:
         """Save an entry to the table.
         If an ID is given, the existing entry in the table is modified.
         If the ID is empty, a new entry is created in the table.
 
         :param table_name: name of the table
         :param data_entry: list of values for the table
-        :return: None
+        :return: ID of entry that was saved
         """
 
         try:
-            entry = self.data_con.build_entry_for_table(table_name, data_entry)
-            if data_entry[0] == '':
-                self.data_con.add_entry_to_table(table_name, entry)
+            if self.data_con.is_relation_table(table_name):
+                # build entry for relation table differently as it's a combination of IDs
+                entry = self.data_con.build_entry_for_relation_table(table_name, data_entry)
+                try:
+                    # add the entry to the table - this inhibits a check whether the entry is already existing
+                    self.data_con.add_entry_to_table(table_name, entry)
+                except error.KeyAlreadyExistError:
+                    # return negative int to show no entry was added
+                    return -1
             else:
-                self.data_con.modify_entry_in_table(table_name, entry)
+                entry = self.data_con.build_entry_for_table(table_name, data_entry)
+                if data_entry[0] == '':
+                    return self.data_con.add_entry_to_table(table_name, entry)
+                else:
+                    return self.data_con.modify_entry_in_table(table_name, entry)
         except error.DataMismatchError:
             self.main_app.send_critical_message('Fehler beim Aufbau des Tabelleneintrags! DataMismatchError')
         except error.NoDataFoundError:

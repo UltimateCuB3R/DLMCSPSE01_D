@@ -276,23 +276,36 @@ class MainApplication(QApplication):
             if selection.topRow() == selection.bottomRow():
                 selected_rows.append(selection.topRow())
             else:
-                for row in range(selection.topRow(), selection.bottomRow()):
+                for row in range(selection.topRow(), selection.bottomRow() + 1):
                     selected_rows.append(row)
         return selected_rows
 
-    def get_selected_rows_of_current_widget(self, table_widget_name='') -> dict:
+    def get_selected_rows_of_current_widget(self) -> dict:
         """Retrieve the selected row indices of the current table widget.
 
-        :return: list of row indices that are selected
+        :return: dict of row indices that are selected
         """
 
         table_widgets = self.get_current_widget().findChildren(QTableWidget)
         tables = {}
         for table_widget in table_widgets:
-            if table_widget.objectName() == table_widget_name or table_widget_name == '':
-                rows = self._get_selection_of_widget(table_widget)
-                tables[table_widget.objectName()] = rows
+            rows = self._get_selection_of_widget(table_widget)
+            tables[table_widget.objectName()] = rows
         return tables
+
+    def get_selected_rows_of_widget(self, table_widget_name) -> list:
+        """Retrieve the selected row indices of the given table widget.
+
+        :return: list of row indices that are selected
+        """
+
+        table_widget = self.get_current_widget().findChild(QTableWidget, table_widget_name)
+
+        if table_widget is not None:
+            rows = self._get_selection_of_widget(table_widget)
+            return rows
+        else:
+            raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
     def init_main_widget(self, combobox, tree_view):
         """Initialize the main widget with values
@@ -387,6 +400,17 @@ class MainApplication(QApplication):
         print(table_widget, table_widget.objectName())
         self._set_table_widget(table_widget, table_data)
         self.get_current_widget().label_table_name.setText(table_name)
+
+    def get_item_of_table_widget(self, widget_name, row, column) -> str:
+        """Get the item of a table widget in a specific row and column as text
+
+        :param widget_name: name of the table widget
+        :param row: item position row
+        :param column: item position column
+        :return: text of specified item in table widget
+        """
+        table_widget = self.get_current_widget().findChild(QTableWidget, widget_name)
+        return table_widget.itemAt(row, column).text()
 
     def get_field_of_current_widget(self, field_name) -> str:
         """Get the value of a field in the current widget
