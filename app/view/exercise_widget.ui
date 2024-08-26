@@ -86,7 +86,26 @@
       </layout>
      </item>
      <item row="5" column="1">
-      <widget class="QTableWidget" name="table_category"/>
+      <widget class="QTableWidget" name="table_category">
+       <property name="editTriggers">
+        <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="showDropIndicator" stdset="0">
+        <bool>false</bool>
+       </property>
+       <property name="dragDropOverwriteMode">
+        <bool>false</bool>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
+       </attribute>
+      </widget>
      </item>
      <item row="5" column="0">
       <widget class="QLabel" name="label_link_category">
@@ -96,7 +115,23 @@
       </widget>
      </item>
      <item row="6" column="1">
-      <widget class="QTableWidget" name="table_resource"/>
+      <widget class="QTableWidget" name="table_resource">
+       <property name="editTriggers">
+        <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="showDropIndicator" stdset="0">
+        <bool>false</bool>
+       </property>
+       <property name="dragDropOverwriteMode">
+        <bool>false</bool>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectRows</enum>
+       </property>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
+       </attribute>
+      </widget>
      </item>
      <item row="6" column="0">
       <widget class="QLabel" name="label_link_resource">

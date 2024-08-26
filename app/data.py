@@ -14,12 +14,15 @@ NAME_UNIT_CATEGORY = 'UNIT_CATEGORY'
 NAME_EXERCISE_UNIT = 'EXERCISE_UNIT'
 NAME_EXERCISE_RESOURCE = 'EXERCISE_RESOURCE'
 NAME_EXERCISE_CATEGORY = 'EXERCISE_CATEGORY'
+NAME_TYPE_MAIN = 'MAIN'
+NAME_TYPE_RELATION = 'RELATION'
 
 
 class _DataTableDefinition:
     """Class to hold definitions of Datatables, so every table can hold its own definition
     """
     _table_name: str
+    _table_type: str
     _columns = []
     _column_types = {}
     _column_relations = {}
@@ -38,6 +41,7 @@ class _DataTableDefinition:
         self._column_relations = definition[2]
         self._table_relations = definition[3]
         self._table_keys = definition[4]
+        self._table_type = definition[5]
 
     def get_name(self):
         """Get the name of the table
@@ -81,12 +85,33 @@ class _DataTableDefinition:
         """
         return self._table_keys
 
-    def has_table_keys(self):
+    def get_table_type(self):
+        """Get the type of the table, either MAIN or RELATION
+
+        :return: type of table
+        """
+        return self._table_type
+
+    def has_table_keys(self) -> bool:
         """Check if table has table keys defined
 
         :return: True if table keys are existent, False if not.
         """
         return len(self._table_keys) > 0
+
+    def is_relation_table(self) -> bool:
+        """Check if table is a relation table
+
+        :return: True if table is relation table
+        """
+        return self._table_type == NAME_TYPE_RELATION
+
+    def is_main_table(self) -> bool:
+        """Check if table is a main table
+
+        :return: True if table is main table
+        """
+        return self._table_type == NAME_TYPE_MAIN
 
 
 class _DataTable:
@@ -127,7 +152,7 @@ class _DataTable:
 
         self._data = pd.read_sql(f'select * from {self._name}', sql_con)
         if self._definition.has_table_keys():
-            self._data.set_index(keys='ID', inplace=True, verify_integrity=True)
+            self._data.set_index(keys=self._definition.get_table_keys(), inplace=True, verify_integrity=True)
         return self._data
 
     def _create_table_sql(self, sql_con):
@@ -174,17 +199,19 @@ class _DataTable:
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        elif self._definition.has_table_keys():
+        elif self._definition.is_main_table():
+            # table is main table, so it has a column ID
             self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
         else:
+            # table is relation table, so it has no column ID
             self._data.drop(self._data[self._data == entry].dropna(how='all').index, axis='rows', inplace=True)
         return self._data
 
-    def add_entry(self, entry: pd.Series) -> pd.DataFrame:
+    def add_entry(self, entry: pd.Series) -> int:
         """Add single entry to the table
 
         :param entry: Series element to be added to the Dataframe
-        :return: complete Dataframe after modification
+        :return: ID of added entry
         """
 
         if not self.__check_columns(entry):
@@ -193,34 +220,41 @@ class _DataTable:
             if self._definition.has_table_keys():
                 # ID will be determined dynamically
                 if len(self._data.index) == 0:
-                    entry['ID'] = 0
+                    entry['ID'] = return_id = 0
                 else:
-                    entry['ID'] = self._data.index.max() + 1
+                    entry['ID'] = return_id = self._data.index.max() + 1
                 self._data.loc[entry['ID']] = entry
             else:
-                # if table has no ID, just add the entry to the end of the Dataframe
-                self._data.loc[len(self._data.index)] = entry
-        return self._data
+                # check if keys already exist in the Dataframe
+                if self._data.isin(list(entry)).all(1).any():
+                    raise error.KeyAlreadyExistError(f'Key {list(entry)} already exists in Dataframe!')
+                else:
+                    # if table has no ID, just add the entry to the end of the Dataframe
+                    return_id = len(self._data.index)
+                    self._data.loc[return_id] = entry
+        return return_id
 
-    def modify_entry(self, entry: pd.Series) -> pd.DataFrame:
+    def modify_entry(self, entry: pd.Series) -> int:
         """Modify a single entry of the table
 
         :param entry: Series element to be modified
-        :return: complete Dataframe after modification
+        :return: ID of modified entry
         """
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        elif self._definition.has_table_keys():
+        elif self._definition.is_relation_table():
+            # relation table entries cannot be modified, only deleted and added
             raise error.ForbiddenActionError(f'Modify is not allowed on this type of table!')
         else:
+            # table is main table, so column ID exists
             try:
                 for col in self._data.columns:
                     self._data.at[entry['ID'], col] = entry[col]
             except KeyError:
                 raise error.NoDataFoundError(f'KeyError in modify_entry for {entry}')
 
-        return self._data
+        return entry['ID']
 
     def lookup_table_by_column(self, name, values) -> pd.DataFrame:
         """Lookup all entries in a table where the column values match the given values
@@ -336,7 +370,18 @@ class DatabaseConnector:
         :return: Dataframe of specified table
         """
 
-        return self._data_tables[name].get_table().copy()
+        return self._data_tables[name].get_table().copy().reset_index()
+
+    def get_table_content_relation(self, name) -> dict[str, pd.DataFrame]:
+        """Get the contents of the related tables
+
+        :param name: Name of table
+        :return: list of Dataframes of related tables
+        """
+        relation_tables = {}
+        for table in self._data_tables[name].get_definition().get_table_relations().keys():
+            relation_tables[table] = self.get_table_content(table)
+        return relation_tables
 
     def get_table_columns(self, name):
         """Get column names of a table
@@ -347,15 +392,15 @@ class DatabaseConnector:
 
         return self._table_columns[name]
 
-    def add_entry_to_table(self, name, entry: pd.Series):
+    def add_entry_to_table(self, name, entry: pd.Series) -> int:
         """Add single entry to specific table
 
         :param name: Name of table
         :param entry: Series element to be added
-        :return: None
+        :return: ID of added entry
         """
 
-        self._data_tables[name].add_entry(entry)
+        return self._data_tables[name].add_entry(entry)
 
     def delete_entry_from_table(self, name, entry: pd.Series):
         """Delete single entry from specific table
@@ -371,15 +416,15 @@ class DatabaseConnector:
         # then delete the entry in the table itself
         self._data_tables[name].delete_entry(entry)
 
-    def modify_entry_in_table(self, name, entry: pd.Series):
+    def modify_entry_in_table(self, name, entry: pd.Series) -> int:
         """Modify single entry in specific table
 
         :param name: Name of table
         :param entry: Series element to be modified
-        :return: None
+        :return: ID of modified entry
         """
 
-        self._data_tables[name].modify_entry(entry)
+        return self._data_tables[name].modify_entry(entry)
 
     def lookup_entry_in_table(self, name, column, values) -> pd.DataFrame:
         """Search for entries in a table regarding relations
@@ -416,6 +461,7 @@ class DatabaseConnector:
         :param name: Name of table
         :return: None
         """
+
         if name is None:
             # commit all changes
             for key in self._data_tables.keys():
@@ -430,6 +476,7 @@ class DatabaseConnector:
         :param name: Name of table
         :return: None
         """
+
         if name is None:
             # rollback all changes to what is saved on the database
             for key in self._data_tables.keys():
@@ -439,10 +486,56 @@ class DatabaseConnector:
             self._data_tables[name].read_table_sql(self._sql_con)
 
     def build_entry_for_table(self, table_name, table_data) -> pd.Series:
+        """Build the entry for the datatable from the stored definition as a Series object
+
+        :param table_name: name of table
+        :param table_data: data of table to be built into a Series object
+        :return: Series element that matches the columns of the table
+        """
+
         if len(self.get_table_columns(table_name)) == len(table_data):
             return pd.Series(index=self.get_table_columns(table_name), data=table_data)
         else:
             raise error.DataMismatchError
+
+    def build_entry_for_relation_table(self, table_name, table_data: dict) -> pd.Series:
+        """Build the relation table entry for the datatable from the stored definition as a Series object.
+        The table data is a dictionary as the column order is unknown when calling.
+
+        :param table_name: name of table
+        :param table_data: data of table as dict to be built into a Series object
+        :return: Series element that matches the columns of the table
+        """
+
+        if len(self.get_table_columns(table_name)) == len(table_data):
+            entry = []
+            # match the right data to the column
+            for column in self.get_table_columns(table_name):
+                try:
+                    entry.append(table_data[column])
+                except KeyError:
+                    raise error.DataMismatchError(f'Column {column} missing in table data!')
+            return pd.Series(index=self.get_table_columns(table_name), data=entry)
+        else:
+            raise error.DataMismatchError(f'Length of given data does not match number of columns for this table!')
+
+    def is_relation_table(self, table_name) -> bool:
+        """Check if a table is a relation table
+
+        :param table_name: name of table
+        :return: bool if table is relation table
+        """
+
+        return self._data_tables[table_name].get_definition().is_relation_table()
+
+    def is_main_table(self, table_name) -> bool:
+        """Check if a table is a main table
+
+        :param table_name: name of table
+        :return: bool if table is main table
+        """
+
+        return self._data_tables[table_name].get_definition().is_main_table()
 
 
 def _read_db_definition(db_def):
@@ -458,6 +551,7 @@ def _read_db_definition(db_def):
 
     for item in root.findall('TABLE'):
         name = item.attrib['NAME']
+        table_type = item.attrib['TYPE']
         columns = []
         column_types = {}
         column_relations = {}
@@ -481,7 +575,5 @@ def _read_db_definition(db_def):
             else:
                 raise error.DataMismatchError(f'Error in _read_db_definition: {child.tag} is unknown!')
 
-        def_tables[name] = (columns, column_types, column_relations, table_relations, table_keys)
+        def_tables[name] = (columns, column_types, column_relations, table_relations, table_keys, table_type)
     return def_tables
-
-

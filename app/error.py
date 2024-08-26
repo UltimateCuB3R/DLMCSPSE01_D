@@ -65,3 +65,29 @@ class ForbiddenActionError(Exception):
         """
 
         super().__init__(message)
+
+
+class WidgetNotKnownError(Exception):
+    """Raise this exception if a given widget name is not known.
+    """
+
+    def __init__(self, message=None):
+        """Calling the base class constructor.
+
+        :param message: message to specify the error
+        """
+
+        super().__init__(message)
+
+
+class KeyAlreadyExistError(Exception):
+    """Raise this exception if a given key already exists in the database.
+    """
+
+    def __init__(self, message=None):
+        """Calling the base class constructor.
+
+        :param message: message to specify the error
+        """
+
+        super().__init__(message)
