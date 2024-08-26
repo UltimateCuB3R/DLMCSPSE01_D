@@ -107,4 +107,4 @@ if __name__ == '__main__':
     data_con.commit_changes()
     # print(data_con.get_table_content(data.NAME_EXERCISE_UNIT))
 
-    print(data_con.get_table_content_relation(data.NAME_UNIT))
+    print(data_con.get_table_relations(data.NAME_UNIT))

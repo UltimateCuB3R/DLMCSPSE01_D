@@ -190,7 +190,7 @@ class _DataTable:
             self._data.to_sql(self._name, con=sql_con, if_exists='replace', index=False,
                               dtype=self._definition.get_column_types())
 
-    def delete_entry(self, entry: pd.Series) -> pd.DataFrame:
+    def delete_entry(self, entry: pd.Series) -> int:
         """Delete specific entry of table
 
         :param entry: Series element to be deleted from the Dataframe
@@ -202,10 +202,12 @@ class _DataTable:
         elif self._definition.is_main_table():
             # table is main table, so it has a column ID
             self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
+            return_id = entry['ID']
         else:
             # table is relation table, so it has no column ID
-            self._data.drop(self._data[self._data == entry].dropna(how='all').index, axis='rows', inplace=True)
-        return self._data
+            self._data.drop(self._data[self._data == entry].dropna(how='any').index, axis='rows', inplace=True)
+            return_id = -1
+        return return_id
 
     def add_entry(self, entry: pd.Series) -> int:
         """Add single entry to the table
@@ -226,7 +228,14 @@ class _DataTable:
                 self._data.loc[entry['ID']] = entry
             else:
                 # check if keys already exist in the Dataframe
-                if self._data.isin(list(entry)).all(1).any():
+                key_already_exist = False
+                for col in self._definition.get_columns():
+                    if self._data[self._data[col] == entry[col]].all(1).any():
+                        key_already_exist = True
+                    else:
+                        key_already_exist = False
+                        break
+                if key_already_exist:
                     raise error.KeyAlreadyExistError(f'Key {list(entry)} already exists in Dataframe!')
                 else:
                     # if table has no ID, just add the entry to the end of the Dataframe
@@ -267,7 +276,10 @@ class _DataTable:
         if name not in self._definition.get_columns():
             raise error.ColumnNotKnownError(f'column {name} is not known for table {self._name}!')
         else:
-            result_data = self._data.loc[self._data[name].isin(values)]
+            if self.get_definition().is_main_table():
+                result_data = self._data.reset_index().loc[self._data.reset_index()[name].isin(values)]
+            else:
+                result_data = self._data.loc[self._data[name].isin(values)]
             return result_data
 
     def get_table(self) -> pd.DataFrame:
@@ -372,16 +384,13 @@ class DatabaseConnector:
 
         return self._data_tables[name].get_table().copy().reset_index()
 
-    def get_table_content_relation(self, name) -> dict[str, pd.DataFrame]:
-        """Get the contents of the related tables
+    def get_table_relations(self, name) -> dict:
+        """Get the relations to other tables
 
         :param name: Name of table
-        :return: list of Dataframes of related tables
+        :return: relations to other tables
         """
-        relation_tables = {}
-        for table in self._data_tables[name].get_definition().get_table_relations().keys():
-            relation_tables[table] = self.get_table_content(table)
-        return relation_tables
+        return self._data_tables[name].get_definition().get_table_relations()
 
     def get_table_columns(self, name):
         """Get column names of a table

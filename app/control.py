@@ -44,6 +44,38 @@ class MainControl:
         self.main_app.connect_display([NAME_SEARCH], self._button_display)
         self.main_app.connect_edit([NAME_SEARCH], self._button_edit)
 
+    def _fill_relation_tables(self, table, main_id='', editable=True):
+        relation_tables = self.data_con.get_table_relations(table)
+        print(f'relation_tables: {relation_tables}')
+        for table_name in relation_tables.keys():
+            sub_tables = table_name.split('_')
+            if len(sub_tables) == 2:
+                if table == sub_tables[0]:
+                    sub_table = sub_tables[1]
+                elif table == sub_tables[1]:
+                    sub_table = sub_tables[0]
+                else:
+                    self.main_app.send_critical_message(
+                        f'Fehler! Beziehungen in Datenbankschema falsch gesetzt für {table}')
+                    return
+
+                sub_table_data = self.data_con.get_table_content(sub_table)
+                relation_was_set = self.main_app.set_relation_table(sub_table, sub_table_data, editable)
+
+                if main_id != '' and relation_was_set:
+                    relation_data = self.data_con.lookup_entry_in_table(table_name, relation_tables[table_name],
+                                                                        [main_id])
+                    sub_table_key = self.data_con.get_table_relations(sub_table)[table_name]
+                    selected_sub_table_data = self.data_con.lookup_entry_in_table(sub_table, 'ID', relation_data[
+                        sub_table_key].to_list())
+
+                    selected_rows = sub_table_data[sub_table_data['ID'].isin(selected_sub_table_data['ID'])].index.to_list()
+                    self.main_app.set_relation_table_selection(sub_table, selected_rows)
+
+            else:
+                self.main_app.send_critical_message(
+                    f'Fehler! Datenbankschema oder Programmierung falsch für {table}!')
+
     def _button_create(self):
         """This action is called when the create button is pressed.
         The widget according to the chosen table is loaded in creation mode.
@@ -60,21 +92,7 @@ class MainControl:
             self.main_app.enable_save_button(True)
 
             # fill the relation table widgets in the current widget
-            relation_tables = self.data_con.get_table_content_relation(table)
-            print(f'relation_tables: {relation_tables}')
-            for table_name in relation_tables.keys():
-                sub_tables = table_name.split('_')
-                if len(sub_tables) == 2:
-                    if table == sub_tables[0]:
-                        self.main_app.set_relation_table(sub_tables[1], self.data_con.get_table_content(sub_tables[1]))
-                    elif table == sub_tables[1]:
-                        self.main_app.set_relation_table(sub_tables[0], self.data_con.get_table_content(sub_tables[0]))
-                    else:
-                        self.main_app.send_critical_message(
-                            f'Fehler! Beziehungen in Datenbankschema falsch gesetzt für {table}')
-                else:
-                    self.main_app.send_critical_message(
-                        f'Fehler! Datenbankschema oder Programmierung falsch für {table}!')
+            self._fill_relation_tables(table)
         else:
             self.main_app.send_critical_message('Fehler! Funktion kann hier nicht ausgeführt werden!')
 
@@ -100,7 +118,7 @@ class MainControl:
             self.main_app.set_fields_of_current_widget(table_name, row, False)
             self.main_app.enable_save_button(False)
 
-            # TODO: fill relation tables
+            self._fill_relation_tables(table_name, row['ID'], False)
 
     def _button_edit(self):
         """
@@ -124,7 +142,7 @@ class MainControl:
             self.main_app.set_fields_of_current_widget(table_name, row, True)
             self.main_app.enable_save_button(True)
 
-            # TODO: fill relation tables
+            self._fill_relation_tables(table_name, row['ID'], True)
 
     def _button_search(self):
         """This action is called when the search button is pressed.
@@ -161,8 +179,7 @@ class MainControl:
 
         print('revert', self)
 
-        # TODO: Revert all changes, read data again from database
-
+        # revert all changes, read data again from database
         self.data_con.rollback_changes()
 
     def _button_cancel(self):
@@ -217,16 +234,33 @@ class MainControl:
             selected_rows = self.main_app.get_selected_rows_of_widget(relation_widget_name)
             # build relation table entries
             rel_table_name = relation_tables[relation_widget_name][0]  # name of relation table
-            pk_name = relation_tables[relation_widget_name][1]  # primary key name
-            fk_name = relation_tables[relation_widget_name][2]  # foreign key name
+            main_id_name = relation_tables[relation_widget_name][1]  # primary key name
+            sub_id_name = relation_tables[relation_widget_name][2]  # foreign key name
 
+            selected_sub_ids = []
             for row in selected_rows:
                 # to get the right ID of the foreign key, the corresponding ID has to be read from the table widget
-                relation_data = {pk_name: entry_id,
-                                 fk_name: self.main_app.get_item_of_table_widget(relation_widget_name, row, 0)}
+                try:
+                    sub_table_id = int(self.main_app.get_item_of_table_widget(relation_widget_name, row, 0))
+                except ValueError:
+                    self.main_app.send_critical_message('Fehler beim Schreiben der Beziehungsdaten!')
+                    return
+
+                relation_data = {main_id_name: entry_id,
+                                 sub_id_name: sub_table_id}
                 self._save_entry(rel_table_name, relation_data)
 
-            # TODO: delete all rows that are not selected
+            unselected_rows = self.main_app.get_unselected_rows_of_widget(relation_widget_name)
+            for row in unselected_rows:
+                try:
+                    sub_table_id = int(self.main_app.get_item_of_table_widget(relation_widget_name, row, 0))
+                except ValueError:
+                    self.main_app.send_critical_message('Fehler beim Schreiben der Beziehungsdaten!')
+                    return
+
+                relation_data = {main_id_name: entry_id,
+                                 sub_id_name: sub_table_id}
+                self._delete_entry(rel_table_name, relation_data)
 
         self.main_app.switch_main_widget()
 
@@ -240,6 +274,32 @@ class MainControl:
         # get all table contents and display connections in tree structure for TreeView
         # TODO: build tree structure for pyqt tree view
         pass
+
+    def _delete_entry(self, table_name, data_entry) -> int:
+        """delete an entry from the table.
+
+        :param table_name: name of the table
+        :param data_entry: list of values for the table
+        :return: ID of entry that was deleted
+        """
+
+        try:
+            if self.data_con.is_relation_table(table_name):
+                # build entry for relation table differently as it's a combination of IDs
+                entry = self.data_con.build_entry_for_relation_table(table_name, data_entry)
+                # delete the entry from the table
+                return self.data_con.delete_entry_from_table(table_name, entry)
+            else:
+                # build the entry for the table
+                entry = self.data_con.build_entry_for_table(table_name, data_entry)
+                # delete the entry from the table, including relation table entries
+                return self.data_con.delete_entry_from_table(table_name, entry)
+        except error.DataMismatchError:
+            self.main_app.send_critical_message('Fehler beim Aufbau des Tabelleneintrags! DataMismatchError')
+        except error.NoDataFoundError:
+            self.main_app.send_critical_message('Fehler beim Modifizieren eines Tabelleneintrags! NoDataFoundError')
+        except error.ForbiddenActionError:
+            self.main_app.send_critical_message('Fehler beim Speichern des Tabelleneintrags! ForbiddenActionError')
 
     def _save_entry(self, table_name, data_entry) -> int:
         """Save an entry to the table.

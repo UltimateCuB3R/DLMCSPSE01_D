@@ -212,6 +212,16 @@ class MainApplication(QApplication):
         if not self.get_main_display():
             self.get_current_widget().pushButton_save.setEnabled(enabled)
 
+    def _enable_global_buttons(self, enabled):
+        """Enable or disable the global buttons
+
+        :param enabled: state of the buttons
+        :return: None
+        """
+
+        self._main_window.findChild(QPushButton, 'pushButton_save_db').setEnabled(enabled)
+        self._main_window.findChild(QPushButton, 'pushButton_revert_db').setEnabled(enabled)
+
     def get_gui_definition(self):
         """Get the gui definition from xml
 
@@ -307,6 +317,24 @@ class MainApplication(QApplication):
         else:
             raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
+    def get_unselected_rows_of_widget(self, table_widget_name) -> list:
+        """Retrieve the unselected row indices of the given table widget.
+
+        :return: list of row indices that are unselected
+        """
+
+        table_widget = self.get_current_widget().findChild(QTableWidget, table_widget_name)
+
+        if table_widget is not None:
+            unselected_rows = []
+            rows = self._get_selection_of_widget(table_widget)
+            for row in range(0, table_widget.rowCount()):
+                if row not in rows:
+                    unselected_rows.append(row)
+            return unselected_rows
+        else:
+            raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
+
     def init_main_widget(self, combobox, tree_view):
         """Initialize the main widget with values
 
@@ -360,6 +388,22 @@ class MainApplication(QApplication):
                 col_index += 1
             index += 1
 
+    @staticmethod
+    def _set_table_widget_selection(table_widget, table_rows):
+        """Set the contents of the table widget to the given table data
+
+        :param table_widget: QTableWidget object
+        :param table_rows: selected rows of the table
+        :return: None
+        """
+
+        for row in range(0, table_widget.rowCount()):
+            selection = QTableWidgetSelectionRange(row, 0, row, table_widget.columnCount() - 1)
+            if row in table_rows:
+                table_widget.setRangeSelected(selection, True)
+            else:
+                table_widget.setRangeSelected(selection, False)
+
     def switch_main_widget(self, table=None):
         """Switch the main widget to a table specific one or back to the initial main widget
 
@@ -369,13 +413,36 @@ class MainApplication(QApplication):
 
         if table is None:
             self._main_window.switch_main_widget()
+            self._enable_global_buttons(True)
         else:
             self._main_window.switch_main_widget(table)
+            self._enable_global_buttons(False)
 
-    def set_relation_table(self, table, table_data):
+    def set_relation_table(self, table, table_data, editable):
         """Set the contents of a relation table in the corresponding widget
 
         :param table_data: data of the relation table
+        :param table: name of the relation table
+        :param editable: bool to set the table widget editable
+        :return: bool if a relation table was set
+        """
+
+        for table_widget in self.get_current_widget().findChildren(QTableWidget):
+            print(table_widget, table_widget.objectName())
+            if table_widget.objectName().lower() == f'table_{table}'.lower():
+                try:
+                    self._set_table_widget(table_widget, table_data)
+                    table_widget.setEnabled(editable)
+                except AttributeError:
+                    self.send_critical_message('Fehler beim Setzen der Beziehungstabellen!')
+                else:
+                    return True
+        return False
+
+    def set_relation_table_selection(self, table, selected_rows):
+        """Set the contents of a relation table in the corresponding widget
+
+        :param selected_rows: selected rows of the table
         :param table: name of the relation table
         :return: None
         """
@@ -384,7 +451,7 @@ class MainApplication(QApplication):
             print(table_widget, table_widget.objectName())
             if table_widget.objectName().lower() == f'table_{table}'.lower():
                 try:
-                    self._set_table_widget(table_widget, table_data)
+                    self._set_table_widget_selection(table_widget, selected_rows)
                 except AttributeError:
                     self.send_critical_message('Fehler beim Setzen der Beziehungstabellen!')
 
@@ -410,7 +477,7 @@ class MainApplication(QApplication):
         :return: text of specified item in table widget
         """
         table_widget = self.get_current_widget().findChild(QTableWidget, widget_name)
-        return table_widget.itemAt(row, column).text()
+        return table_widget.item(row, column).text()
 
     def get_field_of_current_widget(self, field_name) -> str:
         """Get the value of a field in the current widget
