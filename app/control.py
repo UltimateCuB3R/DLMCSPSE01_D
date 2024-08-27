@@ -23,8 +23,8 @@ class MainControl:
         """
 
         self.data_con = data.DatabaseConnector(database, db_def)
-        self.main_tables = [data.NAME_EXERCISE, data.NAME_UNIT, data.NAME_PLAN, data.NAME_CALENDAR, data.NAME_CATEGORY,
-                            data.NAME_RESOURCE]
+        self.main_tables = [data.NAME_EXERCISE, data.NAME_UNIT, data.NAME_PLAN, data.NAME_CATEGORY,
+                            data.NAME_RESOURCE]  # data.NAME_CALENDAR is not yet implemented
         self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH], gui_def)
         self.main_app.init_main_widget(self.main_tables, self._get_tree_structure())
         self._init_connectors()
@@ -45,34 +45,57 @@ class MainControl:
         self.main_app.connect_edit([NAME_SEARCH], self._button_edit)
 
     def _fill_relation_tables(self, table, main_id='', editable=True):
+        """Fill the relation tables of the current widget according to the data related to the given table.
+        Tables can optionally be set to disabled, so no changes can be done.
+        If a main ID is given, the relation tables are selected according to the current data.
+
+        :param table: name of the currently displayed table
+        :param main_id: ID of the currently displayed entry (empty if creation dialog)
+        :param editable: optional switch to set tables to disabled, so no changes can be done
+        :return: None
+        """
+
+        # retrieve the defined relation table settings
         relation_tables = self.data_con.get_table_relations(table)
-        print(f'relation_tables: {relation_tables}')
+        # iterate all relation tables
         for table_name in relation_tables.keys():
+            # relation table name consists of the two main tables joined together
             sub_tables = table_name.split('_')
             if len(sub_tables) == 2:
                 if table == sub_tables[0]:
+                    # first part is main table, so second part is sub_table
                     sub_table = sub_tables[1]
                 elif table == sub_tables[1]:
+                    # second part is main table, so first part is sub_table
                     sub_table = sub_tables[0]
                 else:
+                    # given table name is not existent in relation table name
                     self.main_app.send_critical_message(
                         f'Fehler! Beziehungen in Datenbankschema falsch gesetzt für {table}')
                     return
 
+                # retrieve the data of the sub_table and set the relation table in the current widget
                 sub_table_data = self.data_con.get_table_content(sub_table)
                 relation_was_set = self.main_app.set_relation_table(sub_table, sub_table_data, editable)
 
+                # set the selected entries of the sub_table only if a main ID is given and a relation was set
                 if main_id != '' and relation_was_set:
+                    # search for the entries in the relation table that match the main ID
                     relation_data = self.data_con.lookup_entry_in_table(table_name, relation_tables[table_name],
                                                                         [main_id])
+                    # get the key name of the sub table
                     sub_table_key = self.data_con.get_table_relations(sub_table)[table_name]
+                    # search for the entries in the sub table that match the entries of the selected relation table data
                     selected_sub_table_data = self.data_con.lookup_entry_in_table(sub_table, 'ID', relation_data[
                         sub_table_key].to_list())
 
+                    # build the list of selected rows for the table widget
                     selected_rows = sub_table_data[sub_table_data['ID'].isin(selected_sub_table_data['ID'])].index.to_list()
+                    # set the selection in the table widget
                     self.main_app.set_relation_table_selection(sub_table, selected_rows)
 
             else:
+                # table name contains two underscores, logic cannot apply
                 self.main_app.send_critical_message(
                     f'Fehler! Datenbankschema oder Programmierung falsch für {table}!')
 
@@ -84,10 +107,8 @@ class MainControl:
         :return: None
         """
 
-        print('create:', self)
         if self.main_app.get_main_display():
             table = self.main_app.get_main_left().comboBox_tables.currentText()
-            print(table)
             self.main_app.switch_main_widget(table)
             self.main_app.enable_save_button(True)
 
@@ -97,12 +118,12 @@ class MainControl:
             self.main_app.send_critical_message('Fehler! Funktion kann hier nicht ausgeführt werden!')
 
     def _button_display(self):
+        """his action calls the detail widget of the chosen table with the selected entry.
+        The widget is set to display mode, so no changes can be done.
+
+        :return: None
         """
 
-        :return:
-        """
-
-        print('display:', self)
         table_name = self.main_app.get_current_widget().label_table_name.text()
         table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())
         if len(table_rows) == 0:
@@ -121,27 +142,32 @@ class MainControl:
             self._fill_relation_tables(table_name, row['ID'], False)
 
     def _button_edit(self):
-        """
+        """This action calls the detail widget of the chosen table with the selected entry.
+        The widget is set to edit mode, so changes can be done and saved.
 
         :return: None
         """
 
-        print('edit:', self)
         table_name = self.main_app.get_current_widget().label_table_name.text()
         table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())
+
+        # check if only one row was selected
         if len(table_rows) == 0:
+            # too few lines selected
             self.main_app.send_critical_message('Fehler! Keine Zeile ausgewählt! Bitte genau eine Zeile auswählen!')
         elif len(table_rows) > 1:
+            # too many lines selected
             self.main_app.send_critical_message('Fehler! Zu viele Zeilen ausgewählt! Bitte genau eine Zeile auswählen!')
         else:
-            # switch to chosen table widget and fill the widget with data
+            # switch to chosen table widget
             self.main_app.switch_main_widget(table_name)
+            # get row data corresponding to chosen row
             table_data = self.data_con.get_table_content(table_name)
-
             row = table_data.iloc[table_rows[0][0]]
+            # fill the widget with data
             self.main_app.set_fields_of_current_widget(table_name, row, True)
             self.main_app.enable_save_button(True)
-
+            # fill the relation tables with data
             self._fill_relation_tables(table_name, row['ID'], True)
 
     def _button_search(self):
@@ -151,24 +177,22 @@ class MainControl:
         :return: None
         """
 
-        print('search:', self)
-
         if self.main_app.get_main_display():
-            table = self.main_app.get_main_left().comboBox_tables.currentText()
-            print(table)
+            # search can only be accessed via the main widget
+            table_name = self.main_app.get_main_left().comboBox_tables.currentText()
             self.main_app.switch_main_widget('search')
-            self.main_app.set_search_table(table, self.data_con.get_table_content(table))
+            self.main_app.set_search_table(table_name, self.data_con.get_table_content(table_name))
         else:
+            # fallback if action was improperly connected
             self.main_app.send_critical_message('Diese Funktion kann hier nicht ausgeführt werden!')
 
     def _button_commit(self):
-        """This action commits all table changes to the database
+        """This action commits all table changes to the database.
 
         :return: None
         """
 
-        print('commit', self)
-
+        # commit all changes to the database
         self.data_con.commit_changes()
 
     def _button_revert(self):
@@ -176,8 +200,6 @@ class MainControl:
 
         :return: None
         """
-
-        print('revert', self)
 
         # revert all changes, read data again from database
         self.data_con.rollback_changes()
@@ -189,24 +211,24 @@ class MainControl:
         :return: None
         """
 
-        print('cancel', self)
-
-        # clear all fields of the current widget
-        table_name = self.main_app.get_displayed_table()
-        fields = self.main_app.get_gui_definition()[table_name][1]
-        for field in fields.keys():
-            self.main_app.set_field_in_current_widget(fields[field], '')
+        if self.main_app.get_current_widget_name() != 'search':
+            # clear all fields of the current widget if it's not the search widget
+            table_name = self.main_app.get_displayed_table()
+            fields = self.main_app.get_gui_definition()[table_name][1]
+            for field in fields.keys():
+                self.main_app.set_field_in_current_widget(fields[field], '')
 
         # switch back to the main widget
         self.main_app.switch_main_widget()
 
     def _button_save(self):
-        """
+        """This action saves the currently displayed entry.
+        All GUI fields are read according to the GUI definition.
+        The selected rows of the related tables are also saved to the relation tables.
+        The unselected rows are deleted in the relation tables, if existing.
 
         :return: None
         """
-
-        print('save', self)
 
         # collect all field values into a list and save it to the current table
         table_name = self.main_app.get_displayed_table()
@@ -276,10 +298,11 @@ class MainControl:
         pass
 
     def _delete_entry(self, table_name, data_entry) -> int:
-        """delete an entry from the table.
+        """Delete an entry from the table.
+        If the table is a relation table, the entry will be built differently.
 
         :param table_name: name of the table
-        :param data_entry: list of values for the table
+        :param data_entry: list (or dict) of values for the table
         :return: ID of entry that was deleted
         """
 
@@ -333,22 +356,6 @@ class MainControl:
             self.main_app.send_critical_message('Fehler beim Modifizieren eines Tabelleneintrags! NoDataFoundError')
         except error.ForbiddenActionError:
             self.main_app.send_critical_message('Fehler beim Speichern des Tabelleneintrags! ForbiddenActionError')
-
-    def _save_related_table(self, table_name, data_relation):
-        """
-
-        :param table_name:
-        :param data_relation:
-        :return:
-        """
-
-        entry = self.data_con.build_entry_for_table(table_name, data_relation)
-        if data_relation[0] == '':
-            self.data_con.add_entry_to_table(table_name, entry)
-        else:
-            # TODO: do nothing for relation tables?
-            pass
-            # self.data_con.modify_entry_in_table(table_name, entry)
 
     def start_application(self):
         """Start the main application

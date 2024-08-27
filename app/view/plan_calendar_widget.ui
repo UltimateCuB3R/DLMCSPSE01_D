@@ -16,13 +16,6 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QFormLayout" name="formLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_id">
-       <property name="text">
-        <string>ID</string>
-       </property>
-      </widget>
-     </item>
      <item row="0" column="1">
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
@@ -35,45 +28,21 @@
        <item>
         <widget class="QLabel" name="label_table_name">
          <property name="text">
-          <string>RESOURCE</string>
+          <string>PLAN</string>
          </property>
         </widget>
        </item>
       </layout>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_name">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_id">
        <property name="text">
-        <string>Name</string>
+        <string>ID</string>
        </property>
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QLineEdit" name="lineEdit_name">
-       <property name="text">
-        <string extracomment="Name der Übung"/>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_description">
-       <property name="text">
-        <string>Beschreibung</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QTextEdit" name="textEdit_description"/>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_link_exercise">
-       <property name="text">
-        <string>Verknüpfte Übungen</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <widget class="QTableWidget" name="table_exercise">
+      <widget class="QTableWidget" name="table_plan">
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
        </property>
@@ -84,14 +53,35 @@
         <bool>false</bool>
        </property>
        <property name="selectionMode">
-        <enum>QAbstractItemView::ExtendedSelection</enum>
+        <enum>QAbstractItemView::SingleSelection</enum>
        </property>
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
-       <attribute name="horizontalHeaderCascadingSectionResizes">
+       <attribute name="horizontalHeaderHighlightSections">
         <bool>false</bool>
        </attribute>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_link_plan">
+       <property name="text">
+        <string>Plan auswählen</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QDateEdit" name="dateEdit_plan">
+       <property name="calendarPopup">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_date">
+       <property name="text">
+        <string>Datum festlegen</string>
+       </property>
       </widget>
      </item>
     </layout>

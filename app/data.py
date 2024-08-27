@@ -201,6 +201,7 @@ class _DataTable:
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
         elif self._definition.is_main_table():
             # table is main table, so it has a column ID
+            # TODO: check if ID is in table, otherwise raise NoDataFoundError
             self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
             return_id = entry['ID']
         else:
@@ -228,14 +229,7 @@ class _DataTable:
                 self._data.loc[entry['ID']] = entry
             else:
                 # check if keys already exist in the Dataframe
-                key_already_exist = False
-                for col in self._definition.get_columns():
-                    if self._data[self._data[col] == entry[col]].all(1).any():
-                        key_already_exist = True
-                    else:
-                        key_already_exist = False
-                        break
-                if key_already_exist:
+                if len(self._data[self._data == entry].dropna(how='any').index) > 0:
                     raise error.KeyAlreadyExistError(f'Key {list(entry)} already exists in Dataframe!')
                 else:
                     # if table has no ID, just add the entry to the end of the Dataframe
@@ -382,7 +376,12 @@ class DatabaseConnector:
         :return: Dataframe of specified table
         """
 
-        return self._data_tables[name].get_table().copy().reset_index()
+        if self._data_tables[name].get_definition().is_main_table():
+            # reset index only if it's a main table
+            return self._data_tables[name].get_table().copy().reset_index()
+        else:
+            # do not reset the index for relation tables
+            return self._data_tables[name].get_table().copy()
 
     def get_table_relations(self, name) -> dict:
         """Get the relations to other tables

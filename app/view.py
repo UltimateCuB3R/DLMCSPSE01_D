@@ -87,6 +87,17 @@ class _MainWindow(QMainWindow):
             self.setWindowTitle('sportApp - main')
             self.main_display = True
 
+    def get_current_widget_name(self) -> str:
+        """Get the name of the currently stored widget
+
+        :return: name of the currently stored widget
+        """
+
+        for name, widget in self.detail_widgets.items():
+            if widget == self.current_widget:
+                return name
+        return ''  # empty String
+
 
 class MainApplication(QApplication):
     """Main application that manages the main window with all its widgets.
@@ -253,6 +264,13 @@ class MainApplication(QApplication):
         """
 
         return self._main_window.current_widget
+
+    def get_current_widget_name(self) -> str:
+        """Get the name of the currently stored widget
+
+        :return: name of the currently stored widget
+        """
+        return self._main_window.get_current_widget_name()
 
     def get_displayed_table(self) -> str:
         """Get the name of the currently displayed table.

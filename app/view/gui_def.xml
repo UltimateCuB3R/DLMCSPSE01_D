@@ -5,6 +5,8 @@
         <FIELD NAME="lineEdit_name" COLUMN="NAME"/>
         <FIELD NAME="textEdit_description" COLUMN="DESCRIPTION"/>
         <FIELD NAME="lineEdit_color" COLUMN="COLOR"/>
+        <TABLE NAME="table_exercise" REL_TABLE="EXERCISE_CATEGORY" PK="CATEGORY_ID" FK="EXERCISE_ID"/>
+        <TABLE NAME="table_unit" REL_TABLE="UNIT_CATEGORY" PK="CATEGORY_ID" FK="UNIT_ID"/>
     </WIDGET>
     <WIDGET NAME="exercise_widget.ui" TABLE="EXERCISE">
         <FIELD NAME="lineEdit_id" COLUMN="ID"/>
@@ -19,6 +21,7 @@
         <FIELD NAME="lineEdit_id" COLUMN="ID"/>
         <FIELD NAME="lineEdit_name" COLUMN="NAME"/>
         <FIELD NAME="textEdit_description" COLUMN="DESCRIPTION"/>
+        <TABLE NAME="table_exercise" REL_TABLE="EXERCISE_RESOURCE" PK="RESOURCE_ID" FK="EXERCISE_ID"/>
     </WIDGET>
     <WIDGET NAME="unit_widget.ui" TABLE="UNIT">
         <FIELD NAME="lineEdit_id" COLUMN="ID"/>
@@ -34,4 +37,9 @@
         <FIELD NAME="textEdit_description" COLUMN="DESCRIPTION"/>
         <TABLE NAME="table_unit" REL_TABLE="UNIT_PLAN" PK="PLAN_ID" FK="UNIT_ID"/>
     </WIDGET>
+    <!--<WIDGET NAME="plan_calendar_widget.ui" TABLE="PLAN_CALENDAR">
+        <FIELD NAME="lineEdit_id" COLUMN="ID"/>
+        <FIELD NAME="dateEdit_plan" COLUMN="DATE"/>
+        <TABLE NAME="table_plan" PK="PLAN_ID"/>
+    </WIDGET>-->
 </WIDGETS>
