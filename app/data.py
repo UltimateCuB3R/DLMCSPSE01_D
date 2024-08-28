@@ -16,6 +16,7 @@ NAME_EXERCISE_RESOURCE = 'EXERCISE_RESOURCE'
 NAME_EXERCISE_CATEGORY = 'EXERCISE_CATEGORY'
 NAME_TYPE_MAIN = 'MAIN'
 NAME_TYPE_RELATION = 'RELATION'
+NAME_TYPE_SUB = 'SUB'
 
 
 class _DataTableDefinition:
@@ -112,6 +113,13 @@ class _DataTableDefinition:
         :return: True if table is main table
         """
         return self._table_type == NAME_TYPE_MAIN
+
+    def is_sub_table(self) -> bool:
+        """Check if table is a subordinate table
+
+        :return: True if table is subordinate table
+        """
+        return self._table_type == NAME_TYPE_SUB
 
 
 class _DataTable:
@@ -246,16 +254,16 @@ class _DataTable:
 
         if not self.__check_columns(entry):
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        elif self._definition.is_relation_table():
-            # relation table entries cannot be modified, only deleted and added
-            raise error.ForbiddenActionError(f'Modify is not allowed on this type of table!')
-        else:
+        elif self._definition.has_table_keys():
             # table is main table, so column ID exists
             try:
                 for col in self._data.columns:
                     self._data.at[entry['ID'], col] = entry[col]
             except KeyError:
                 raise error.NoDataFoundError(f'KeyError in modify_entry for {entry}')
+        else:
+            # relation table entries cannot be modified, only deleted and added
+            raise error.ForbiddenActionError(f'Modify is not allowed on this type of table!')
 
         return entry['ID']
 
@@ -270,9 +278,11 @@ class _DataTable:
         if name not in self._definition.get_columns():
             raise error.ColumnNotKnownError(f'column {name} is not known for table {self._name}!')
         else:
-            if self.get_definition().is_main_table():
+            if self.get_definition().has_table_keys():
+                # main or sub tables have the column ID as index
                 result_data = self._data.reset_index().loc[self._data.reset_index()[name].isin(values)]
             else:
+                # relation tables do not have the column ID
                 result_data = self._data.loc[self._data[name].isin(values)]
             return result_data
 
@@ -390,6 +400,15 @@ class DatabaseConnector:
         :return: relations to other tables
         """
         return self._data_tables[name].get_definition().get_table_relations()
+
+    def get_column_relations(self, name) -> dict:
+        """Get the column relations of a table
+
+        :param name: Name of the table
+        :return: relations to other tables via columns
+        """
+
+        return self._data_tables[name].get_definition().get_column_relations()
 
     def get_table_columns(self, name):
         """Get column names of a table
@@ -544,6 +563,22 @@ class DatabaseConnector:
         """
 
         return self._data_tables[table_name].get_definition().is_main_table()
+
+    def is_sub_table(self, table_name) -> bool:
+        """Check if a table is a subordinate table
+
+        :param table_name: name of table
+        :return: bool if table is subordinate table
+        """
+
+        return self._data_tables[table_name].get_definition().is_sub_table()
+
+    @staticmethod
+    def concat_tables(table_1: pd.DataFrame, table_2: pd.DataFrame, drop_duplicates=True) -> pd.DataFrame:
+        return_table = pd.concat([table_1, table_2], ignore_index=False, sort=True)
+        if drop_duplicates:
+            return_table.drop_duplicates(inplace=True)
+        return return_table
 
 
 def _read_db_definition(db_def):
