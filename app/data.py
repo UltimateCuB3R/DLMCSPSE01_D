@@ -24,6 +24,7 @@ class _DataTableDefinition:
     """
     _table_name: str
     _table_type: str
+    _top_table: str
     _columns = []
     _column_types = {}
     _column_relations = {}
@@ -43,6 +44,7 @@ class _DataTableDefinition:
         self._table_relations = definition[3]
         self._table_keys = definition[4]
         self._table_type = definition[5]
+        self._top_table = definition[6]
 
     def get_name(self):
         """Get the name of the table
@@ -92,6 +94,13 @@ class _DataTableDefinition:
         :return: type of table
         """
         return self._table_type
+
+    def get_top_table(self):
+        """Get the top table of the table.
+
+        :return: name of the top table
+        """
+        return self._top_table
 
     def has_table_keys(self) -> bool:
         """Check if table has table keys defined
@@ -386,7 +395,7 @@ class DatabaseConnector:
         :return: Dataframe of specified table
         """
 
-        if self._data_tables[name].get_definition().is_main_table():
+        if self._data_tables[name].get_definition().has_table_keys():
             # reset index only if it's a main table
             return self._data_tables[name].get_table().copy().reset_index()
         else:
@@ -550,7 +559,7 @@ class DatabaseConnector:
         """Check if a table is a relation table
 
         :param table_name: name of table
-        :return: bool if table is relation table
+        :return: True if table is relation table
         """
 
         return self._data_tables[table_name].get_definition().is_relation_table()
@@ -559,7 +568,7 @@ class DatabaseConnector:
         """Check if a table is a main table
 
         :param table_name: name of table
-        :return: bool if table is main table
+        :return: True if table is main table
         """
 
         return self._data_tables[table_name].get_definition().is_main_table()
@@ -568,10 +577,30 @@ class DatabaseConnector:
         """Check if a table is a subordinate table
 
         :param table_name: name of table
-        :return: bool if table is subordinate table
+        :return: True if table is subordinate table
         """
 
         return self._data_tables[table_name].get_definition().is_sub_table()
+
+    def is_top_table(self, relation_table, top_table) -> bool:
+        """Check if a table is the top table of a given relation table
+
+        :param relation_table: name of the relation table
+        :param top_table: name of the top table to check for
+        :return: True if table is the top table of the relation table
+        """
+        return self._data_tables[relation_table].get_definition().get_top_table() == top_table
+
+    def get_top_table_key(self, table_name) -> str:
+        top_table = self._data_tables[table_name].get_definition().get_top_table()
+        if top_table == '':
+            return ''
+        else:
+            column_relations = self._data_tables[table_name].get_definition().get_column_relations()
+            for column, relation_table in column_relations.items():
+                if top_table == relation_table:
+                    return column
+        return ''
 
     @staticmethod
     def concat_tables(table_1: pd.DataFrame, table_2: pd.DataFrame, drop_duplicates=True) -> pd.DataFrame:
@@ -595,6 +624,10 @@ def _read_db_definition(db_def):
     for item in root.findall('TABLE'):
         name = item.attrib['NAME']
         table_type = item.attrib['TYPE']
+        try:
+            top = item.attrib['TOP']
+        except KeyError:
+            top = ''
         columns = []
         column_types = {}
         column_relations = {}
@@ -618,5 +651,5 @@ def _read_db_definition(db_def):
             else:
                 raise error.DataMismatchError(f'Error in _read_db_definition: {child.tag} is unknown!')
 
-        def_tables[name] = (columns, column_types, column_relations, table_relations, table_keys, table_type)
+        def_tables[name] = (columns, column_types, column_relations, table_relations, table_keys, table_type, top)
     return def_tables

@@ -3,6 +3,7 @@ import view
 import error
 
 NAME_SEARCH = 'search'
+NAME_PRINT = 'print'
 
 
 class MainControl:
@@ -23,10 +24,11 @@ class MainControl:
         """
 
         self.data_con = data.DatabaseConnector(database, db_def)
-        self.main_tables = [data.NAME_EXERCISE, data.NAME_UNIT, data.NAME_PLAN, data.NAME_CATEGORY,
+        self.main_tables = [data.NAME_PLAN, data.NAME_UNIT, data.NAME_EXERCISE, data.NAME_CATEGORY,
                             data.NAME_RESOURCE]  # data.NAME_CALENDAR is not yet implemented
-        self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH], gui_def)
-        self.main_app.init_main_widget(self.main_tables, self._get_tree_structure())
+        self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH, NAME_PRINT], gui_def)
+        self.main_app.init_main_widget(self.main_tables)
+        self.main_app.set_main_tree_widget(self._get_tree_structure())
         self._init_connectors()
 
     def _init_connectors(self):
@@ -40,9 +42,11 @@ class MainControl:
         self.main_app.connect_commit(self._button_commit)
         self.main_app.connect_revert(self._button_revert)
         self.main_app.connect_save(self.main_tables, self._button_save)
-        self.main_app.connect_cancel(self.main_tables + [NAME_SEARCH], self._button_cancel)
+        self.main_app.connect_cancel(self.main_tables + [NAME_SEARCH, NAME_PRINT], self._button_cancel)
         self.main_app.connect_display([NAME_SEARCH], self._button_display)
         self.main_app.connect_edit([NAME_SEARCH], self._button_edit)
+        self.main_app.connect_export([NAME_SEARCH], self._button_export)
+        self.main_app.connect_print([NAME_PRINT], self._button_print)
 
     def _fill_relation_tables(self, table, main_id='', editable=True):
         """Fill the relation tables of the current widget according to the data related to the given table.
@@ -119,7 +123,7 @@ class MainControl:
             self.main_app.send_critical_message('Fehler! Funktion kann hier nicht ausgeführt werden!')
 
     def _button_display(self):
-        """his action calls the detail widget of the chosen table with the selected entry.
+        """This action calls the detail widget of the chosen table with the selected entry.
         The widget is set to display mode, so no changes can be done.
 
         :return: None
@@ -141,8 +145,6 @@ class MainControl:
             self.main_app.enable_save_button(False)
 
             self._fill_relation_tables(table_name, row['ID'], False)
-
-            print(self.get_data_top_down(table_name, [row['ID']]))
 
     def _button_edit(self):
         """This action calls the detail widget of the chosen table with the selected entry.
@@ -173,6 +175,31 @@ class MainControl:
             # fill the relation tables with data
             self._fill_relation_tables(table_name, row['ID'], True)
 
+    def _button_export(self):
+        """This action calls the print widget of the chosen table with the selected entry.
+
+        :return: None
+        """
+
+        table_name = self.main_app.get_current_widget().label_table_name.text()
+        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())
+        if len(table_rows) == 0:
+            self.main_app.send_critical_message('Fehler! Keine Zeile ausgewählt! Bitte genau eine Zeile auswählen!')
+        elif len(table_rows) > 1:
+            self.main_app.send_critical_message('Fehler! Zu viele Zeilen ausgewählt! Bitte genau eine Zeile auswählen!')
+        else:
+            # switch to chosen table widget and fill the widget with data
+            self.main_app.switch_main_widget(NAME_PRINT)
+            table_data = self.data_con.get_table_content(table_name)
+
+            row = table_data.iloc[table_rows[0][0]]
+            self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name),
+                                                  self.data_con.get_table_columns(table_name))
+
+    def _button_print(self):
+        # self.main_app.send_information_message('Print')
+        self.main_app.print_pdf()
+
     def _button_search(self):
         """This action is called when the search button is pressed.
         The central search widget is loaded with the corresponding table data of the chosen table.
@@ -185,6 +212,8 @@ class MainControl:
             table_name = self.main_app.get_main_left().comboBox_tables.currentText()
             self.main_app.switch_main_widget('search')
             self.main_app.set_search_table(table_name, self.data_con.get_table_content(table_name))
+            self.main_app.set_current_tree_widget(self._get_tree_structure(table=table_name),
+                                                  self.data_con.get_table_columns(table_name))
         else:
             # fallback if action was improperly connected
             self.main_app.send_critical_message('Diese Funktion kann hier nicht ausgeführt werden!')
@@ -214,7 +243,7 @@ class MainControl:
         :return: None
         """
 
-        if self.main_app.get_current_widget_name() != 'search':
+        if self.main_app.get_current_widget_name() not in [NAME_SEARCH, NAME_PRINT]:
             # clear all fields of the current widget if it's not the search widget
             table_name = self.main_app.get_displayed_table()
             fields = self.main_app.get_gui_definition()[table_name][1]
@@ -289,7 +318,16 @@ class MainControl:
 
         self.main_app.switch_main_widget()
 
-    def get_data_top_down(self, main_table_name, main_table_id, table_blacklist=None) -> dict:
+    def _get_data_top_down(self, main_table_name, main_table_id, table_blacklist=None) -> dict:
+        """Retrieve all the data of a table from top down according to the relations.
+        All table data will be stored in a dictionary that is returned.
+
+        :param main_table_name: name of the main table to start the data selection
+        :param main_table_id: list of IDs of the main table that shall be selected
+        :param table_blacklist: blacklist of table names that should not be processed (needed for recursion)
+        :return: dictionary of table names and corresponding table data according to the selected main IDs
+        """
+
         # create blacklist if not given - the blacklisted tables should not be processed anymore
         if table_blacklist is None:
             table_blacklist = []
@@ -302,47 +340,59 @@ class MainControl:
 
         # retrieve main table data and insert into dict
         main_table_data = self.data_con.lookup_entry_in_table(main_table_name, 'ID', main_table_id)
-        return_table[main_table_name] = main_table_data
 
         table_blacklist.append(main_table_name)  # main table should not be processed another time
 
-        if self.data_con.is_sub_table(main_table_name):
-            return return_table  # stop processing if main table is a subordinate table
+        children = {}
 
-        # retrieve main table relations and process
-        main_table_relations = self.data_con.get_table_relations(main_table_name)
-        for rel_table_name, rel_key_name in main_table_relations.items():
-            if rel_table_name in table_blacklist:
-                continue  # stop processing this table as it has already been processed
+        # don't process children if it is a subordinate table
+        if not self.data_con.is_sub_table(main_table_name):
+            # setup children dict
+            for main_id in main_table_id:
+                children[main_id] = []
 
-            relation_table = self.data_con.lookup_table_by_relation(main_table_id, main_table_name, rel_table_name)
-            return_table[rel_table_name] = relation_table  # insert relation table into dict
+            # retrieve main table relations and process children
+            main_table_relations = self.data_con.get_table_relations(main_table_name)
+            for rel_table_name, rel_key_name in main_table_relations.items():
+                if rel_table_name in table_blacklist:
+                    continue  # stop processing this table as it has already been processed
+                if not self.data_con.is_top_table(rel_table_name, main_table_name):
+                    continue  # stop processing this relation table if the current main table is not the top table of it
 
-            table_blacklist.append(rel_table_name)  # relation table should not be processed in the next object
+                relation_table = self.data_con.lookup_table_by_relation(main_table_id, main_table_name, rel_table_name)
 
-            # retrieve column relations and recursively retrieve the data below
-            column_relations = self.data_con.get_column_relations(rel_table_name)
-            for column, sub_table in column_relations.items():
-                if column == rel_key_name or sub_table in table_blacklist:
-                    # the main key should not be processed, also if the table is in the blacklist
-                    continue
-                else:
-                    # recursively retrieve the tables below the current table
-                    sub_data = self.get_data_top_down(sub_table, relation_table[column].to_list(), table_blacklist)
-                    if self.data_con.is_sub_table(sub_table) and sub_table in return_table:
-                        # join the data of sub tables if the data was already read
-                        for sub_data_table, sub_data_content in sub_data.items():
-                            if sub_data_table == sub_table:
-                                return_table[sub_data_table] = self.data_con.concat_tables(return_table[sub_data_table],
-                                                                                           sub_data[sub_data_table])
-                            else:
-                                return_table[sub_data_table] = sub_data_content
+                table_blacklist.append(rel_table_name)  # relation table should not be processed in the next object
+
+                # retrieve column relations and recursively retrieve the data below
+                column_relations = self.data_con.get_column_relations(rel_table_name)
+                for column, sub_table in column_relations.items():
+                    if column == rel_key_name or sub_table in table_blacklist:
+                        # the main key should not be processed, also if the table is in the blacklist
+                        continue
                     else:
-                        return_table.update(sub_data)
+                        # recursively retrieve the tables below the current table
+                        sub_data = self._get_data_top_down(sub_table, relation_table[column].to_list(), table_blacklist)
+                        for main_id in main_table_id:
+                            selected_relation_data = relation_table.loc[
+                                relation_table[self.data_con.get_top_table_key(rel_table_name)] == main_id]
+
+                            for key, row in selected_relation_data.iterrows():
+                                child = {row[column]: sub_data[row[column]]}
+                                if len(children[main_id]) == 0:
+                                    children[main_id] = [child]
+                                else:
+                                    children[main_id].append(child)
+
+        for main_id in main_table_id:
+            selected_main_data = main_table_data.loc[main_table_data['ID'] == main_id].iloc[0]
+            if len(children.keys()) > 0:
+                return_table[main_id] = [main_table_name, selected_main_data, children[main_id]]
+            else:  # no children
+                return_table[main_id] = [main_table_name, selected_main_data, None]
 
         return return_table
 
-    def _get_tree_structure(self, table=None):
+    def _get_tree_structure(self, main_id=None, table=None):
         """
 
         :param table:
@@ -350,15 +400,58 @@ class MainControl:
         """
 
         # get all table contents and display connections in tree structure for TreeView
-        # TODO: build tree structure for pyqt tree view
         if table is None:
-            for table in self.main_tables:
-                pass
+            tree = []
+            for table_name in self.main_tables:
+                tree += self._get_tree_structure(table=table_name)
+            return tree
+        elif self.data_con.is_relation_table(table):
+            # relation tables are not allowed to be listed in TreeView
+            self.main_app.send_critical_message('Fehler! Tabelle für TreeView ist eine Beziehungstabelle!')
         else:
-            table_data = self.data_con.get_table_content(table)
-            all_data = self.get_data_top_down(table, table_data['ID'].to_list())
+            if main_id is None:
+                table_data = self.data_con.get_table_content(table)
+                all_data = self._get_data_top_down(table, table_data['ID'].to_list())
+            else:
+                all_data = self._get_data_top_down(table, [main_id])
 
-        pass
+            main_items = []
+            for main_id, contents in all_data.items():
+                main_items.append(self._build_tree_item(contents))
+
+            return main_items
+
+    def _build_tree_item(self, contents):
+        name = contents[0]
+        item_data = contents[1]
+        children = contents[2]
+
+        child_items = []
+        if children is not None:
+            for child in children:
+                for child_id, child_content in child.items():
+                    if len(child_items) == 0:
+                        child_items = [self._build_tree_item(child_content)]
+                    else:
+                        child_items.append(self._build_tree_item(child_content))
+
+        return self.main_app.create_tree_item(name, item_data.to_list(), child_items)
+
+    def _get_sub_table_data(self, table_name, main_id, all_table_data: dict):
+        main_table_relations = self.data_con.get_table_relations(table_name)
+        return_sub_data = {}
+        for rel_table_name, rel_key_name in main_table_relations.items():
+            if not self.data_con.is_top_table(rel_table_name, table_name):
+                continue  # stop processing this relation table if the table is not the top table of it
+            rel_table_data = all_table_data[rel_table_name]
+            column_relations = self.data_con.get_column_relations(rel_table_name)
+            for column, sub_table in column_relations.items():
+                if column == rel_key_name:
+                    sub_data = all_table_data[sub_table]
+                    return_sub_data[sub_table] = sub_data[sub_data['ID'].isin(rel_table_data[rel_key_name])]
+                else:
+                    continue  # the sub key should not be processed
+        return return_sub_data
 
     def _delete_entry(self, table_name, data_entry) -> int:
         """Delete an entry from the table.

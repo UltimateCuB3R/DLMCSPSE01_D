@@ -1,7 +1,8 @@
-# from PyQt5.QtGui import *
+from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
+from PyQt5.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
 import xml.etree.ElementTree as ElTr
 import error
 
@@ -161,6 +162,28 @@ class MainApplication(QApplication):
         for table in tables:
             if table in self._main_window.detail_widgets.keys():
                 self._main_window.detail_widgets[table].pushButton_edit.clicked.connect(action)
+
+    def connect_export(self, tables, action):
+        """Connect the export button of all specified widgets to the corresponding method
+
+        :param tables: list of table names that correspond to widgets
+        :param action: method to be connected to the export button
+        :return: None
+        """
+        for table in tables:
+            if table in self._main_window.detail_widgets.keys():
+                self._main_window.detail_widgets[table].pushButton_export.clicked.connect(action)
+
+    def connect_print(self, tables, action):
+        """Connect the print button of all specified widgets to the corresponding method
+
+        :param tables: list of table names that correspond to widgets
+        :param action: method to be connected to the print button
+        :return: None
+        """
+        for table in tables:
+            if table in self._main_window.detail_widgets.keys():
+                self._main_window.detail_widgets[table].pushButton_print.clicked.connect(action)
 
     def connect_search(self, action):
         """Connect the search button of the main widget to the corresponding method
@@ -353,19 +376,15 @@ class MainApplication(QApplication):
         else:
             raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
-    def init_main_widget(self, combobox, tree_view):
+    def init_main_widget(self, combobox):
         """Initialize the main widget with values
 
         :param combobox: values of tables that need to be added to the main combobox
-        :param tree_view:
         :return: None
         """
 
         # Set Table Combobox
         self.get_main_left().comboBox_tables.addItems(combobox)
-        # Set Widget Config
-        # Set Tree Overview
-        pass
 
     def send_critical_message(self, message):
         """Send a critical message to the user and block the current widget until the message is confirmed
@@ -550,6 +569,49 @@ class MainApplication(QApplication):
                 field.setTime(QTime().fromString(field_data))
         else:
             self.send_critical_message('Fehler beim Setzen der Felder im aktuellen Widget!')
+
+    @staticmethod
+    def _set_tree_structure(tree_widget: QTreeWidget, tree_items, header_labels, column_count=6):
+        tree_widget.setColumnCount(column_count)
+        tree_widget.setHeaderLabels(header_labels)
+        tree_widget.insertTopLevelItems(0, tree_items)
+        tree_widget.header().setSectionResizeMode(QHeaderView.ResizeToContents)  # activate auto-resize
+
+    @staticmethod
+    def create_tree_item(name, item_data, child_items):
+        value_list = [name]
+        for value in item_data:
+            if isinstance(value, str):
+                value_list.append(value)
+            else:
+                value_list.append(str(value))
+        tree_item = QTreeWidgetItem(value_list)
+        for child in child_items:
+            tree_item.addChild(child)
+        return tree_item
+
+    def set_current_tree_widget(self, tree_items, header):
+        header_labels = ['Objekt'] + header
+        self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6)
+
+    def get_current_tree_widget(self):
+        return self.get_current_widget().treeWidget
+
+    def set_main_tree_widget(self, tree_items):
+        header_labels = ['Objekt', 'ID', '', '', '', '']
+        self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6)
+
+    def print_pdf(self):
+        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None, 'PDF files (.pdf);;All Files()')
+        if filename != '':
+            if QFileInfo(filename).suffix() == '':
+                filename += '.pdf'
+            printer = QPrinter(QPrinter.HighResolution)
+            printer.setOutputFormat(QPrinter.PdfFormat)
+            printer.setOutputFileName(filename)
+            # self.get_current_widget().document().print_(printer)
+            self.primaryScreen().grabWindow(self.get_current_tree_widget().winId()).save(f'{filename}.jpg', 'jpg')
+            # self.get_current_widget().render(QPainter(printer))
 
     def start_application(self):
         """Start the application
