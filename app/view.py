@@ -2,9 +2,9 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
+from PyQt5.QtPrintSupport import QPrinter  # QPrintDialog, QPrintPreviewDialog
 import xml.etree.ElementTree as ElTr
 import error
-
 import sys
 
 
@@ -19,46 +19,46 @@ class _MainWindow(QMainWindow):
     main_display: bool
     detail_widgets: dict[str, QWidget]
 
-    # translations: dict
-
-    def __init__(self, tables, *args, **kwargs):
+    def __init__(self, widgets, *args, **kwargs):
         """Initialize the main window with the main widgets.
         Load all table specific widgets into a dictionary to easily swap them out at runtime.
 
-        :param tables: name of tables that correspond to widgets which need to be loaded
+        :param widgets: name of widgets which need to be loaded
         :param args: arguments tuple
         :param kwargs: keywords dictionary
         """
 
         super(_MainWindow, self).__init__(*args, **kwargs)
-        uic.loadUi('view/main.ui', self)
-        self.setWindowTitle('sportApp - main')
+        uic.loadUi('view/main.ui', self)  # load main layout
+        self.setWindowTitle('sportApp - main')  # set the main window title
 
         self.main_layout = self.horizontalLayout_main_widget
-        self.main_left = uic.loadUi('view/main_left.ui')
-        self.main_right = uic.loadUi('view/main_right.ui')
-        self.main_layout.addWidget(self.main_left)
-        self.main_layout.addWidget(self.main_right)
-        self.main_display = True
+        self.main_left = uic.loadUi('view/main_left.ui')  # load left main widget
+        self.main_right = uic.loadUi('view/main_right.ui')  # load right main widget
+        self.main_layout.addWidget(self.main_left)  # add left main widget to the layout
+        self.main_layout.addWidget(self.main_right)  # add right main widget to the layout
+        self.main_display = True  # main display is active
 
-        self.detail_widgets = {}
-        for table in tables:
+        self.detail_widgets = {}  # create dict for the detail widgets
+        for name in widgets:  # iterate through the given widget names
             try:
-                self.detail_widgets[table] = uic.loadUi('view/' + table + '_widget.ui')
-                self.detail_widgets[table].hide()
+                # load the widget into the dict and hide it
+                self.detail_widgets[name] = uic.loadUi('view/' + name + '_widget.ui')
+                self.detail_widgets[name].hide()
             except FileNotFoundError:
+                # file could not be found, so widget cannot be loaded
                 continue
 
-    def switch_main_widget(self, table=None):
+    def switch_main_widget(self, name=None):
         """Switch the main widget to a table specific widget if given - else switch back to the initial main widget
 
-        :param table: name of table that corresponds to a specific widget
+        :param name: name of the specific widget
         :return: None
         """
 
-        if table is not None:
+        if name is not None:
             if self.main_display:
-                # main display is active, so remove and hide the widgets
+                # main display is active, so remove and hide the main widgets
                 self.main_layout.removeWidget(self.main_left)
                 self.main_left.hide()
                 self.main_layout.removeWidget(self.main_right)
@@ -68,24 +68,38 @@ class _MainWindow(QMainWindow):
                 self.main_layout.removeWidget(self.current_widget)
                 self.current_widget.hide()
 
-            self.current_widget = self.detail_widgets[table]
+            # set the current widget to the chosen detail widget
+            self.current_widget = self.detail_widgets[name]
             self.main_layout.addWidget(self.current_widget)
             self.current_widget.show()
 
-            self.setWindowTitle(f'sportApp - {table}')
-            self.main_display = False
+            self.setWindowTitle(f'sportApp - {name}')  # set the window title to the specific widget name
+            self.main_display = False  # main display is inactive
         else:
             # no table name is given, so switch back to main widget
             self.main_layout.removeWidget(self.current_widget)
             self.current_widget.hide()
 
+            # add the main widgets back
             self.main_left.show()
             self.main_layout.addWidget(self.main_left)
             self.main_right.show()
             self.main_layout.addWidget(self.main_right)
 
-            self.setWindowTitle('sportApp - main')
-            self.main_display = True
+            self.setWindowTitle('sportApp - main')  # set the window title back to main
+            self.main_display = True  # main display is active
+
+    def get_current_widget_name(self) -> str:
+        """Get the name of the currently stored widget
+
+        :return: name of the currently stored widget
+        """
+
+        # iterate through all widgets to find the name of the currently displayed widget
+        for name, widget in self.detail_widgets.items():
+            if widget == self.current_widget:
+                return name
+        return ''  # empty String
 
 
 class MainApplication(QApplication):
@@ -105,9 +119,9 @@ class MainApplication(QApplication):
         """
 
         super(MainApplication, self).__init__(sys.argv, *args, **kwargs)
-        self._main_window = _MainWindow(tables)
-        self._main_window.show()
-        self._gui_def = _read_gui_definition(gui_def)
+        self._main_window = _MainWindow(tables)  # create the main window
+        self._main_window.show()  # show the main window and all its content
+        self._gui_def = _read_gui_definition(gui_def)  # read the GUI definition from the xml file
 
     def _set_field_editable(self, field_name, editable):
         """Set a given field to be editable or not
@@ -117,6 +131,7 @@ class MainApplication(QApplication):
         :return: None
         """
 
+        # find the field with the given name in the current widget and set it editable
         field = self.get_current_widget().findChild(QObject, field_name)
         field.setReadOnly(not editable)
 
@@ -136,8 +151,9 @@ class MainApplication(QApplication):
         :param action: method to be connected to the display button
         :return: None
         """
-        for table in tables:
-            if table in self._main_window.detail_widgets.keys():
+
+        for table in tables:  # iterate through all given table
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
                 self._main_window.detail_widgets[table].pushButton_display.clicked.connect(action)
 
     def connect_edit(self, tables, action):
@@ -147,9 +163,34 @@ class MainApplication(QApplication):
         :param action: method to be connected to the edit button
         :return: None
         """
-        for table in tables:
-            if table in self._main_window.detail_widgets.keys():
+
+        for table in tables:  # iterate through all given table
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
                 self._main_window.detail_widgets[table].pushButton_edit.clicked.connect(action)
+
+    def connect_export(self, tables, action):
+        """Connect the export button of all specified widgets to the corresponding method
+
+        :param tables: list of table names that correspond to widgets
+        :param action: method to be connected to the export button
+        :return: None
+        """
+
+        for table in tables:  # iterate through all given table
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
+                self._main_window.detail_widgets[table].pushButton_export.clicked.connect(action)
+
+    def connect_print(self, tables, action):
+        """Connect the print button of all specified widgets to the corresponding method
+
+        :param tables: list of table names that correspond to widgets
+        :param action: method to be connected to the print button
+        :return: None
+        """
+
+        for table in tables:  # iterate through all given tables
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
+                self._main_window.detail_widgets[table].pushButton_print.clicked.connect(action)
 
     def connect_search(self, action):
         """Connect the search button of the main widget to the corresponding method
@@ -186,8 +227,8 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        for table in tables:
-            if table in self._main_window.detail_widgets.keys():
+        for table in tables:  # iterate through all given tables
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
                 self._main_window.detail_widgets[table].pushButton_cancel.clicked.connect(action)
 
     def connect_save(self, tables, action):
@@ -198,8 +239,8 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        for table in tables:
-            if table in self._main_window.detail_widgets.keys():
+        for table in tables:  # iterate through all given tables
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
                 self._main_window.detail_widgets[table].pushButton_save.clicked.connect(action)
 
     def enable_save_button(self, enabled):
@@ -209,8 +250,21 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        if not self.get_main_display():
+        if not self.get_main_display():  # check if the main display is not active
+            # enable the save button of the current widget
             self.get_current_widget().pushButton_save.setEnabled(enabled)
+
+    def _enable_global_buttons(self, enabled):
+        """Enable or disable the global buttons
+
+        :param enabled: state of the buttons
+        :return: None
+        """
+
+        # enable the commit button
+        self._main_window.findChild(QPushButton, 'pushButton_save_db').setEnabled(enabled)
+        # enable the revert button
+        self._main_window.findChild(QPushButton, 'pushButton_revert_db').setEnabled(enabled)
 
     def get_gui_definition(self):
         """Get the gui definition from xml
@@ -244,16 +298,26 @@ class MainApplication(QApplication):
 
         return self._main_window.current_widget
 
+    def get_current_widget_name(self) -> str:
+        """Get the name of the currently stored widget
+
+        :return: name of the currently stored widget
+        """
+
+        return self._main_window.get_current_widget_name()
+
     def get_displayed_table(self) -> str:
         """Get the name of the currently displayed table.
-        Returns empty string if no table is currently displayed.
+        Returns empty string and calls an error message if no table is currently displayed.
 
         :return: currently displayed table as string
         """
 
         try:
+            # retrieve the name of the currently displayed table
             return self.get_current_widget().label_table_name.text()
         except AttributeError:
+            # label is not available in the current widget
             self.send_critical_message('Fehler beim Lesen der aktuell angezeigten Tabelle (label_table_name)')
 
     def get_main_display(self) -> bool:
@@ -272,10 +336,11 @@ class MainApplication(QApplication):
         """
 
         selected_rows = []
-        for selection in table_widget.selectedRanges():
-            if selection.topRow() == selection.bottomRow():
-                selected_rows.append(selection.topRow())
+        for selection in table_widget.selectedRanges():  # iterate the selection of the given table widget
+            if selection.topRow() == selection.bottomRow():  # check if only one row is selected
+                selected_rows.append(selection.topRow())  # append the single row
             else:
+                # more than one row is selected, so append all rows in the selected range
                 for row in range(selection.topRow(), selection.bottomRow() + 1):
                     selected_rows.append(row)
         return selected_rows
@@ -285,12 +350,13 @@ class MainApplication(QApplication):
 
         :return: dict of row indices that are selected
         """
-
+        # find all table widgets in the current widget
         table_widgets = self.get_current_widget().findChildren(QTableWidget)
+
         tables = {}
-        for table_widget in table_widgets:
-            rows = self._get_selection_of_widget(table_widget)
-            tables[table_widget.objectName()] = rows
+        for table_widget in table_widgets:  # iterate through all table widgets
+            rows = self._get_selection_of_widget(table_widget)  # retrieve the selected rows
+            tables[table_widget.objectName()] = rows  # add the selected rows to the dict
         return tables
 
     def get_selected_rows_of_widget(self, table_widget_name) -> list:
@@ -299,27 +365,45 @@ class MainApplication(QApplication):
         :return: list of row indices that are selected
         """
 
+        # find the table widget in the current widget with the given name
         table_widget = self.get_current_widget().findChild(QTableWidget, table_widget_name)
 
-        if table_widget is not None:
-            rows = self._get_selection_of_widget(table_widget)
+        if table_widget is not None:  # check if a table widget was found
+            rows = self._get_selection_of_widget(table_widget)  # retrieve the selected rows
             return rows
         else:
+            # no table widget with the given name could be found
             raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
-    def init_main_widget(self, combobox, tree_view):
+    def get_unselected_rows_of_widget(self, table_widget_name) -> list:
+        """Retrieve the unselected row indices of the given table widget.
+
+        :return: list of row indices that are unselected
+        """
+
+        # find the table widget in the current widget with the given name
+        table_widget = self.get_current_widget().findChild(QTableWidget, table_widget_name)
+
+        if table_widget is not None:  # check if a table widget was found
+            unselected_rows = []
+            rows = self._get_selection_of_widget(table_widget)  # retrieve the selected rows
+            for row in range(0, table_widget.rowCount()):  # iterate through all rows
+                if row not in rows:  # check if the current row is selected
+                    unselected_rows.append(row)  # append if the row is not selected
+            return unselected_rows
+        else:
+            # no table widget with the given name could be found
+            raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
+
+    def init_main_widget(self, combobox):
         """Initialize the main widget with values
 
         :param combobox: values of tables that need to be added to the main combobox
-        :param tree_view:
         :return: None
         """
 
         # Set Table Combobox
         self.get_main_left().comboBox_tables.addItems(combobox)
-        # Set Widget Config
-        # Set Tree Overview
-        pass
 
     def send_critical_message(self, message):
         """Send a critical message to the user and block the current widget until the message is confirmed
@@ -348,44 +432,90 @@ class MainApplication(QApplication):
         :return: None
         """
 
+        # set the main settings of the table widget corresponding to the given data
         table_widget.setRowCount(len(table_data.index))
         table_widget.setColumnCount(len(table_data.columns))
         table_widget.setHorizontalHeaderLabels(table_data.columns.to_list())
+
         index = 0
-        for key, row in table_data.iterrows():
-            print(f'index: {index}, key: {key}, row: {row}')
+        for key, row in table_data.iterrows():  # iterate through the given data
             col_index = 0
-            for column in table_data.columns:
+            for column in table_data.columns:  # iterate through the columns
+                # create a widget item and set it to the corresponding row/column
                 table_widget.setItem(index, col_index, QTableWidgetItem(str(row[column])))
                 col_index += 1
             index += 1
 
-    def switch_main_widget(self, table=None):
-        """Switch the main widget to a table specific one or back to the initial main widget
+    @staticmethod
+    def _set_table_widget_selection(table_widget, table_rows):
+        """Set the contents of the table widget to the given table data
 
-        :param table: name of the table/widget to be loaded - will switch back to main if None is given
+        :param table_widget: QTableWidget object
+        :param table_rows: selected rows of the table
         :return: None
         """
 
-        if table is None:
-            self._main_window.switch_main_widget()
-        else:
-            self._main_window.switch_main_widget(table)
+        for row in range(0, table_widget.rowCount()):  # iterate through all rows of the table widget
+            selection = QTableWidgetSelectionRange(row, 0, row, table_widget.columnCount() - 1)
+            if row in table_rows:  # check if this row is selected
+                table_widget.setRangeSelected(selection, True)  # set this row selected
+            else:
+                table_widget.setRangeSelected(selection, False)  # set this row unselected
 
-    def set_relation_table(self, table, table_data):
+    def switch_main_widget(self, name=None):
+        """Switch the main widget to a table specific one or back to the initial main widget
+
+        :param name: name of the table/widget to be loaded - will switch back to main if None is given
+        :return: None
+        """
+
+        if name is None:  # check if a widget name was given
+            # switch back to the main widget
+            self._main_window.switch_main_widget()
+            self._enable_global_buttons(True)  # enable the global buttons (revert/commit)
+        else:
+            # switch to the specified widget
+            self._main_window.switch_main_widget(name)
+            self._enable_global_buttons(False)  # disable the global buttons (revert/commit)
+
+    def set_relation_table(self, table, table_data, editable) -> bool:
         """Set the contents of a relation table in the corresponding widget
 
         :param table_data: data of the relation table
         :param table: name of the relation table
+        :param editable: bool to set the table widget editable
+        :return: True if a relation table was set
+        """
+
+        for table_widget in self.get_current_widget().findChildren(QTableWidget):  # iterate through all table widgets
+            if table_widget.objectName().lower() == f'table_{table}'.lower():
+                # if the table widget name matches the given table name, the given table data can be set
+                try:
+                    self._set_table_widget(table_widget, table_data)
+                    table_widget.setEnabled(editable)  # enable that the widget can be edited
+                except AttributeError:
+                    # an error occurred when trying to set the table widget
+                    self.send_critical_message('Fehler beim Setzen der Beziehungstabellen!')
+                else:
+                    return True  # a relation table was set
+
+        return False  # no relation table was set
+
+    def set_relation_table_selection(self, table, selected_rows):
+        """Set the contents of a relation table in the corresponding widget
+
+        :param selected_rows: selected rows of the table
+        :param table: name of the relation table
         :return: None
         """
 
-        for table_widget in self.get_current_widget().findChildren(QTableWidget):
-            print(table_widget, table_widget.objectName())
+        for table_widget in self.get_current_widget().findChildren(QTableWidget):  # iterate through all table widgets
             if table_widget.objectName().lower() == f'table_{table}'.lower():
+                # if the table widget name matches the given table name, the given selection can be set
                 try:
-                    self._set_table_widget(table_widget, table_data)
+                    self._set_table_widget_selection(table_widget, selected_rows)
                 except AttributeError:
+                    # an error occurred when trying to set the table widget selection
                     self.send_critical_message('Fehler beim Setzen der Beziehungstabellen!')
 
     def set_search_table(self, table_name, table_data):
@@ -396,10 +526,11 @@ class MainApplication(QApplication):
         :return: None
         """
 
+        # find the table widget in the current widget - the search table may only have one
         table_widget = self.get_current_widget().findChild(QTableWidget)
-        print(table_widget, table_widget.objectName())
-        self._set_table_widget(table_widget, table_data)
-        self.get_current_widget().label_table_name.setText(table_name)
+
+        self._set_table_widget(table_widget, table_data)  # set the table widget to the given data
+        self.get_current_widget().label_table_name.setText(table_name)  # set the table name
 
     def get_item_of_table_widget(self, widget_name, row, column) -> str:
         """Get the item of a table widget in a specific row and column as text
@@ -409,8 +540,11 @@ class MainApplication(QApplication):
         :param column: item position column
         :return: text of specified item in table widget
         """
+
+        # find the table widget with the given name in the current widget
         table_widget = self.get_current_widget().findChild(QTableWidget, widget_name)
-        return table_widget.itemAt(row, column).text()
+        # return the text of the specified item of the table widget
+        return table_widget.item(row, column).text()
 
     def get_field_of_current_widget(self, field_name) -> str:
         """Get the value of a field in the current widget
@@ -419,8 +553,10 @@ class MainApplication(QApplication):
         :return: value of the field as string
         """
 
+        # find the field with the given name in the current widget
         field = self.get_current_widget().findChild(QObject, field_name)
 
+        # get the field data corresponding to the field type
         if isinstance(field, QLineEdit):
             return field.text()
         elif isinstance(field, QTextEdit):
@@ -428,6 +564,7 @@ class MainApplication(QApplication):
         elif isinstance(field, QTimeEdit):
             return str(field.time().toPyTime())
         else:
+            # field type is unknown, so no data can be retrieved
             self.send_critical_message('Fehler beim Lesen der Felder im aktuellen Widget!')
 
     def set_fields_of_current_widget(self, table_name, row_data, editable=True):
@@ -439,8 +576,8 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        fields = self.get_gui_definition()[table_name][1]
-        for field in fields.keys():
+        fields = self.get_gui_definition()[table_name][1]  # get the fields of the given table
+        for field in fields.keys():  # iterate through all fields and set the data
             self.set_field_in_current_widget(fields[field], row_data[field])
             self._set_field_editable(fields[field], editable)
 
@@ -452,8 +589,10 @@ class MainApplication(QApplication):
         :return: None
         """
 
+        # find the field with the given name in the current widget
         field = self.get_current_widget().findChild(QObject, field_name)
 
+        # set the field data corresponding to the field type
         if isinstance(field, QLineEdit):
             field.setText(str(field_data))
         elif isinstance(field, QTextEdit):
@@ -464,13 +603,104 @@ class MainApplication(QApplication):
             else:
                 field.setTime(QTime().fromString(field_data))
         else:
+            # field type is unknown, so no data can be set
             self.send_critical_message('Fehler beim Setzen der Felder im aktuellen Widget!')
+
+    @staticmethod
+    def _set_tree_structure(tree_widget: QTreeWidget, tree_items, header_labels, column_count=6):
+        """Set the tree structure of the given QTreeWidget.
+
+        :param tree_widget: QTreeWidget that shall be changed
+        :param tree_items: QTreeWidgetItems to be inserted into the tree widget
+        :param header_labels: labels of the header columns
+        :param column_count: count of columns to be displayed
+        :return: None
+        """
+
+        tree_widget.setColumnCount(column_count)
+        tree_widget.setHeaderLabels(header_labels)
+        tree_widget.insertTopLevelItems(0, tree_items)
+        tree_widget.header().setSectionResizeMode(QHeaderView.ResizeToContents)  # activate auto-resize
+
+    @staticmethod
+    def create_tree_item(name, item_data, child_items):
+        """Create and return a tree item with the given item data and the child items.
+
+        :param name: name of the table for which a tree item should be created
+        :param item_data: data of the tree item to be displayed
+        :param child_items: items that are children of this item
+        :return: QTreeWidgetItem with the given data
+        """
+
+        value_list = [name]  # name is the first value of the item
+        for value in item_data:  # iterate through the given data to append to the value list
+            if isinstance(value, str):
+                # if the value is already a str, it can be appended
+                value_list.append(value)
+            else:
+                # if the value is not a str, it must be converted to a str first
+                value_list.append(str(value))
+
+        tree_item = QTreeWidgetItem(value_list)  # create the tree item
+
+        # add all given children to the item
+        for child in child_items:
+            tree_item.addChild(child)
+
+        return tree_item
+
+    def set_current_tree_widget(self, tree_items, header):
+        """Set the tree widget in the currently displayed widget (not main widget)
+
+        :param tree_items: top level items that define the tree structure
+        :param header: labels of the header columns
+        :return: None
+        """
+
+        header_labels = ['Objekt'] + header
+        self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6)
+
+    def get_current_tree_widget(self):
+        """Retrieve the tree widget of the currently displayed widget
+
+        :return: tree widget that is currently displayed
+        """
+
+        return self.get_current_widget().treeWidget
+
+    def set_main_tree_widget(self, tree_items):
+        """Set the main tree widget with the given tree items
+
+        :param tree_items: top level items that define the tree structure
+        :return: None
+        """
+
+        header_labels = ['Objekt', 'ID', '', '', '', '']
+        self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6)
+
+    def print_widget(self):
+        """Print the current widget as a viewable file
+
+        :return: None
+        """
+
+        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None, 'PDF files (.pdf);;All Files()')
+        if filename != '':
+            if QFileInfo(filename).suffix() == '':
+                filename += '.pdf'
+            printer = QPrinter(QPrinter.HighResolution)
+            printer.setOutputFormat(QPrinter.PdfFormat)
+            printer.setOutputFileName(filename)
+            # self.get_current_widget().document().print_(printer)
+            self.primaryScreen().grabWindow(self.get_current_tree_widget().winId()).save(f'{filename}.jpg', 'jpg')
+            # self.get_current_widget().render(QPainter(printer))
 
     def start_application(self):
         """Start the application
 
         :return: None
         """
+
         self.exec_()
 
 
@@ -481,24 +711,29 @@ def _read_gui_definition(gui_def) -> dict:
     :return: dictionary of gui definition
     """
 
+    # parse given file into ElementTree
     tree = ElTr.parse(gui_def)
     root = tree.getroot()
-    def_gui = {}
+    def_gui = {}  # create empty dictionary for return
 
     for item in root.findall('WIDGET'):
-        name = item.attrib['NAME']
-        table = item.attrib['TABLE']
+        name = item.attrib['NAME']  # name of the widget
+        table = item.attrib['TABLE']  # table that corresponds to the widget
 
-        fields = {}
-        tables = {}
+        fields = {}  # fields of this widget
+        tables = {}  # table widgets of this widget
         for child in item:
             if child.tag == 'FIELD':
+                # child is a field, so the column name and the field name should be linked
                 fields[child.attrib['COLUMN']] = child.attrib['NAME']
             elif child.tag == 'TABLE':
+                # child is a table widget, so the widget name should be linked to the relation table and its keys
                 tables[child.attrib['NAME']] = [child.attrib['REL_TABLE'], child.attrib['PK'], child.attrib['FK']]
             else:
-                pass
+                # new child tag that is not yet defined
+                raise error.DataMismatchError(f'Error in _read_gui_definition: {child.tag} is unknown!')
 
+        # save the data in the dictionary to the corresponding table name
         def_gui[table] = [name, fields, tables]
 
     return def_gui
