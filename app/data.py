@@ -26,11 +26,11 @@ class _DataTableDefinition:
     _table_name: str
     _table_type: str
     _top_table: str
-    _column_names = []
-    _column_types = {}
-    _column_relations = {}
-    _table_relations = {}
-    _table_keys = []
+    _column_names: list
+    _column_types: dict
+    _column_relations: dict
+    _table_relations: dict
+    _table_keys: list
 
     def __init__(self, name, definition):
         """Construct a definition object out of the definitions read from XML
@@ -48,7 +48,7 @@ class _DataTableDefinition:
         self._table_type = definition[5]
         self._top_table = definition[6]
 
-    def get_name(self):
+    def get_name(self) -> str:
         """Get the name of the table
 
         :return: name of the table
@@ -56,7 +56,7 @@ class _DataTableDefinition:
 
         return self._table_name
 
-    def get_column_names(self):
+    def get_column_names(self) -> list:
         """Get all the columns of the table, including column ID
 
         :return: all columns of the table
@@ -64,7 +64,7 @@ class _DataTableDefinition:
 
         return self._column_names
 
-    def get_column_types(self):
+    def get_column_types(self) -> dict:
         """Get all type definitions of the columns, excluding column ID
 
         :return: all type definitions w/o ID
@@ -72,7 +72,7 @@ class _DataTableDefinition:
 
         return self._column_types
 
-    def get_column_relations(self):
+    def get_column_relations(self) -> dict:
         """Get all relation definitions of the columns
 
         :return: all relation definitions of the columns
@@ -80,7 +80,7 @@ class _DataTableDefinition:
 
         return self._column_relations
 
-    def get_table_relations(self):
+    def get_table_relations(self) -> dict:
         """Get all the relations to other tables
 
         :return: relations to other tables
@@ -88,7 +88,7 @@ class _DataTableDefinition:
 
         return self._table_relations
 
-    def get_table_keys(self):
+    def get_table_keys(self) -> list:
         """Get all key fields of the table
 
         :return: all key fields
@@ -96,7 +96,7 @@ class _DataTableDefinition:
 
         return self._table_keys
 
-    def get_table_type(self):
+    def get_table_type(self) -> str:
         """Get the type of the table, either MAIN or RELATION
 
         :return: type of table
@@ -104,7 +104,7 @@ class _DataTableDefinition:
 
         return self._table_type
 
-    def get_top_table(self):
+    def get_top_table(self) -> str:
         """Get the top table of the table.
 
         :return: name of the top table
@@ -153,7 +153,7 @@ class _DataTable:
     _data: pd.DataFrame
     _definition: _DataTableDefinition
 
-    def __init__(self, sql_con, name, definition):
+    def __init__(self, sql_con: sqlite3.Connection, name, definition):
         """Constructor for table object
 
         :param sql_con: sqlite connection to database
@@ -177,7 +177,7 @@ class _DataTable:
 
             self._create_table_sql(sql_con)  # create the table in the database
 
-    def read_table_sql(self, sql_con):
+    def read_table_sql(self, sql_con: sqlite3.Connection):
         """Read table from database
         Raises ValueError when table does not exist
 
@@ -190,7 +190,7 @@ class _DataTable:
             # table has column 'ID', so ID is the index
             self._data.set_index(keys=self._definition.get_table_keys(), inplace=True, verify_integrity=True)
 
-    def _create_table_sql(self, sql_con):
+    def _create_table_sql(self, sql_con: sqlite3.Connection):
         """Create table on database with current contents of _data
         Raises ValueError if table already exists
 
@@ -208,7 +208,7 @@ class _DataTable:
             self._data.to_sql(self._name, con=sql_con, if_exists='fail', index=False,
                               dtype=self._definition.get_column_types())
 
-    def modify_table_sql(self, sql_con, sort=True):
+    def modify_table_sql(self, sql_con: sqlite3.Connection, sort=True):
         """Write current contents of _data to database
 
         :param sort: sort the table by index before writing to SQL
@@ -344,7 +344,7 @@ class _DataTable:
 
         return self._definition
 
-    def __check_columns(self, row: pd.Series):
+    def __check_columns(self, row: pd.Series) -> bool:
         """Check if the columns of a row have the same definition as the Dataframe
 
         :param row: Series to check the columns

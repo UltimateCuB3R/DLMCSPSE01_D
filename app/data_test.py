@@ -8,7 +8,7 @@ DATABASE = 'data/test.db'
 DB_DEF = 'data/db_def.xml'
 
 
-class MyTestCase(unittest.TestCase):
+class DataUnitTest(unittest.TestCase):
     def test_add_entry_to_main_table(self):
         entry = pd.Series(index=data_con.get_table_columns(data.NAME_EXERCISE),
                           data=['', 'Test Übung', 'Dies ist ein Test', '00:00:00', 'http://www.google.de'])
