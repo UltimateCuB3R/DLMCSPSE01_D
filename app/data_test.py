@@ -156,21 +156,44 @@ class MyTestCase(unittest.TestCase):
 
         data_con.rollback_changes()
 
-    def test_commit_changes(self):
-        # TODO: test commit
-        pass
-
     def test_rollback_changes(self):
-        # TODO: test rollback
-        pass
+        entry = pd.Series(index=data_con.get_table_columns(data.NAME_EXERCISE),
+                          data=['', 'Test Rollback', 'Dies ist ein Test Rollback', '00:00:00', 'http://www.google.de'])
+        data_before = data_con.get_table_content(data.NAME_EXERCISE)
+        added_id = data_con.add_entry_to_table(data.NAME_EXERCISE, entry)
+        data_after_add = data_con.get_table_content(data.NAME_EXERCISE)
+
+        data_con.rollback_changes(data.NAME_EXERCISE)
+
+        data_after_rollback = data_con.get_table_content(data.NAME_EXERCISE)
+        index_differences = set(data_before.index.to_list()) ^ set(data_after_rollback.index.to_list())
+
+        # assert that the added ID was added to the table
+        self.assertEqual(data_after_add['ID'].isin([added_id]).any(), True)
+        # assert that after the rollback, the added ID is no longer in the table
+        self.assertEqual(data_after_rollback['ID'].isin([added_id]).any(), False)
+        # assert that the IDs of data_before and data_after_rollback match
+        self.assertEqual(len(index_differences), 0)
 
     def test_lookup_entry_in_table(self):
-        # TODO: test lookup entry
-        pass
+        exercise_name = 'Test Übung'
+        lookup_existing = data_con.lookup_entry_in_table(data.NAME_EXERCISE, 'NAME', [exercise_name])
+        # assert that the found ID is 0
+        self.assertEqual(lookup_existing['ID'][0], 0)
+
+        lookup_none = data_con.lookup_entry_in_table(data.NAME_EXERCISE, 'NAME', ['NON-EXISTING'])
+        # assert that no entry was found
+        self.assertEqual(len(lookup_none.index), 0)
 
     def test_lookup_table_by_relation(self):
-        # TODO: test lookup relation
-        pass
+        exercise_id = 0
+        lookup_existing = data_con.lookup_table_by_relation([exercise_id], data.NAME_EXERCISE, data.NAME_EXERCISE_CATEGORY)
+        # assert that the EXERCISE_ID of the found entry is the given value
+        self.assertEqual(lookup_existing['EXERCISE_ID'][0], exercise_id)
+
+        lookup_none = data_con.lookup_table_by_relation([-1], data.NAME_EXERCISE, data.NAME_EXERCISE_CATEGORY)
+        # assert that no entry was found
+        self.assertEqual(len(lookup_none.index), 0)
 
     def test_singleton_database_connector(self):
         data_con1 = data.DatabaseConnector(DATABASE, DB_DEF)

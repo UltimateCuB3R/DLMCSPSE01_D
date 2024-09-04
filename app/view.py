@@ -607,7 +607,7 @@ class MainApplication(QApplication):
             self.send_critical_message('Fehler beim Setzen der Felder im aktuellen Widget!')
 
     @staticmethod
-    def _set_tree_structure(tree_widget: QTreeWidget, tree_items, header_labels, column_count=6):
+    def _set_tree_structure(tree_widget: QTreeWidget, tree_items, header_labels, column_count=6, expand_all=False):
         """Set the tree structure of the given QTreeWidget.
 
         :param tree_widget: QTreeWidget that shall be changed
@@ -621,6 +621,8 @@ class MainApplication(QApplication):
         tree_widget.setHeaderLabels(header_labels)
         tree_widget.insertTopLevelItems(0, tree_items)
         tree_widget.header().setSectionResizeMode(QHeaderView.ResizeToContents)  # activate auto-resize
+        if expand_all:
+            tree_widget.expandAll()  # auto-expand the tree
 
     @staticmethod
     def create_tree_item(name, item_data, child_items):
@@ -649,16 +651,17 @@ class MainApplication(QApplication):
 
         return tree_item
 
-    def set_current_tree_widget(self, tree_items, header):
+    def set_current_tree_widget(self, tree_items, header, expand_all: bool):
         """Set the tree widget in the currently displayed widget (not main widget)
 
+        :param expand_all: expand all items of the tree if True
         :param tree_items: top level items that define the tree structure
         :param header: labels of the header columns
         :return: None
         """
 
         header_labels = ['Objekt'] + header
-        self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6)
+        self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6, expand_all)
 
     def get_current_tree_widget(self):
         """Retrieve the tree widget of the currently displayed widget
@@ -676,7 +679,7 @@ class MainApplication(QApplication):
         """
 
         header_labels = ['Objekt', 'ID', '', '', '', '']
-        self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6)
+        self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6, False)
 
     def print_widget(self):
         """Print the current widget as a viewable file
