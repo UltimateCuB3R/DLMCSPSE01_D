@@ -1,0 +1,87 @@
+@startuml view
+!pragma useIntermediatePackages false
+
+class control.MainControl {
+  +data_con: data.DatabaseConnector
+  +main_app: view.MainApplication
+  +main_tables: list
+}
+
+control.MainControl *-- view.MainApplication
+control.MainControl *-- data.DatabaseConnector
+control.MainControl *-- error.KeyAlreadyExistError
+control.MainControl *-- error.ForbiddenActionError
+control.MainControl *-- error.NoDataFoundError
+control.MainControl *-- error.DataMismatchError
+
+class data.DatabaseConnector << (S,#FF7700) Singleton >> {
+  #_sql_con: sqlite3.Connection
+  #_data_tables: dict[str, _DataTable]
+}
+class data._DataTable {
+  #_name: str
+  #_data: pandas.core.frame.DataFrame
+  #_definition: _DataTableDefinition
+}
+class data._DataTableDefinition {
+  #_column_names: list
+  #_column_relations: dict
+  #_column_types: dict
+  #_table_keys: list
+  #_table_name: str
+  #_table_relations: dict
+  #_table_type: str
+  #_top_table: str
+}
+data.DatabaseConnector *-- data._DataTable
+data.DatabaseConnector *-- error.TableNotKnownError
+data.DatabaseConnector *-- error.DataMismatchError
+data._DataTable *-- data._DataTableDefinition
+data._DataTable *-- error.KeyAlreadyExistError
+data._DataTable *-- error.ForbiddenActionError
+data._DataTable *-- error.NoDataFoundError
+data._DataTable *-- error.DataMismatchError
+data._DataTable *-- error.ColumnNotKnownError
+
+class data_test.DataUnitTest {
+}
+data_test.DataUnitTest *-- data.DatabaseConnector
+data_test.DataUnitTest *-- error.DataMismatchError
+data_test.DataUnitTest *-- error.NoDataFoundError
+data_test.DataUnitTest *-- error.ForbiddenActionError
+data_test.DataUnitTest *-- error.KeyAlreadyExistError
+
+class error.ColumnNotKnownError {
+}
+class error.DataMismatchError {
+}
+class error.ForbiddenActionError {
+}
+class error.KeyAlreadyExistError {
+}
+class error.NoDataFoundError {
+}
+class error.TableNotKnownError {
+}
+class error.WidgetNotKnownError {
+}
+
+class view.MainApplication {
+  #_main_window: _MainWindow
+  #_gui_def: dict[str, list]
+}
+class view._MainWindow {
+  +main_layout: PyQt5.QtWidgets.QLayout
+  +main_left: PyQt5.QtWidgets.QWidget
+  +main_right: PyQt5.QtWidgets.QWidget
+  +current_widget: PyQt5.QtWidgets.QWidget
+  +main_display: bool
+  +detail_widgets: dict[str, QWidget]
+}
+view.MainApplication *-- view._MainWindow
+view.MainApplication *-- error.WidgetNotKnownError
+view.MainApplication *-- error.DataMismatchError
+
+
+@enduml
+
