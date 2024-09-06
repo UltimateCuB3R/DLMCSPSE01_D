@@ -359,6 +359,10 @@ class MainControl:
                                  sub_id_name: sub_table_id}
                 self._delete_entry(rel_table_name, relation_data)  # delete the entry from the data table
 
+        # reset all fields to the initial values
+        for field_name in fields.keys():
+            self.main_app.set_field_in_current_widget(fields[field_name], '')  # set empty data
+
         self._switch_main_widget()  # switch back to the main widget after saving is completed
 
     def _get_data_top_down(self, main_table_name: str, main_table_id: list, table_blacklist=None) -> dict:

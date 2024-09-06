@@ -619,6 +619,7 @@ class MainApplication(QApplication):
 
         tree_widget.setColumnCount(column_count)
         tree_widget.setHeaderLabels(header_labels)
+        tree_widget.clear()  # remove all items that are currently stored
         tree_widget.insertTopLevelItems(0, tree_items)
         tree_widget.header().setSectionResizeMode(QHeaderView.ResizeToContents)  # activate auto-resize
         if expand_all:
