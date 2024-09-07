@@ -1,6 +1,7 @@
 import data
 import view
 import error
+import os
 
 NAME_SEARCH = 'search'
 NAME_PRINT = 'print'
@@ -14,18 +15,24 @@ class MainControl:
     main_app: view.MainApplication
     main_tables: []
 
-    def __init__(self, database, db_def, gui_def):
+    def __init__(self, database, db_def, gui_def, path):
         """Initialize the main control by giving the paths of the database and the definition file.
         The main application is created and loaded with all necessary widgets.
 
         :param database: path to the database file
         :param db_def: path to the database definition file
+        :param gui_def: path to the GUI definition file
+        :param path: current path of the application
         """
 
-        self.data_con = data.DatabaseConnector(database, db_def)
+        db_path = str(os.path.join(path, database))
+        db_def_path = str(os.path.join(path, db_def))
+        gui_def_path = str(os.path.join(path, gui_def))
+
+        self.data_con = data.DatabaseConnector(db_path, db_def_path)
         self.main_tables = [data.NAME_PLAN, data.NAME_UNIT, data.NAME_EXERCISE, data.NAME_CATEGORY,
                             data.NAME_RESOURCE]  # data.NAME_CALENDAR is not yet implemented
-        self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH, NAME_PRINT], gui_def)
+        self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH, NAME_PRINT], gui_def_path, path)
         self.main_app.init_main_widget(self.main_tables)
         self.main_app.set_main_tree_widget(self._get_tree_structure())
         self._init_connectors()

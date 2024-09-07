@@ -6,6 +6,7 @@ from PyQt5.QtPrintSupport import QPrinter  # QPrintDialog, QPrintPreviewDialog
 import xml.etree.ElementTree as ElTr
 import error
 import sys
+import os
 
 
 class _MainWindow(QMainWindow):
@@ -19,22 +20,23 @@ class _MainWindow(QMainWindow):
     main_display: bool
     detail_widgets: dict[str, QWidget]
 
-    def __init__(self, widgets, *args, **kwargs):
+    def __init__(self, widgets, path, *args, **kwargs):
         """Initialize the main window with the main widgets.
         Load all table specific widgets into a dictionary to easily swap them out at runtime.
 
         :param widgets: name of widgets which need to be loaded
+        :param path: current path of the application
         :param args: arguments tuple
         :param kwargs: keywords dictionary
         """
 
         super(_MainWindow, self).__init__(*args, **kwargs)
-        uic.loadUi('view/main.ui', self)  # load main layout
+        uic.loadUi(os.path.join(path, 'view\\main.ui'), self)  # load main layout
         self.setWindowTitle('sportApp - main')  # set the main window title
 
         self.main_layout = self.horizontalLayout_main_widget
-        self.main_left = uic.loadUi('view/main_left.ui')  # load left main widget
-        self.main_right = uic.loadUi('view/main_right.ui')  # load right main widget
+        self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left.ui'))  # load left main widget
+        self.main_right = uic.loadUi(os.path.join(path, 'view\\main_right.ui'))  # load right main widget
         self.main_layout.addWidget(self.main_left)  # add left main widget to the layout
         self.main_layout.addWidget(self.main_right)  # add right main widget to the layout
         self.main_display = True  # main display is active
@@ -43,7 +45,7 @@ class _MainWindow(QMainWindow):
         for name in widgets:  # iterate through the given widget names
             try:
                 # load the widget into the dict and hide it
-                self.detail_widgets[name] = uic.loadUi('view/' + name + '_widget.ui')
+                self.detail_widgets[name] = uic.loadUi(os.path.join(path, 'view/' + name + '_widget.ui'))
                 self.detail_widgets[name].hide()
             except FileNotFoundError:
                 # file could not be found, so widget cannot be loaded
@@ -110,16 +112,18 @@ class MainApplication(QApplication):
     _main_window: _MainWindow
     _gui_def: dict[str, list]
 
-    def __init__(self, tables, gui_def, *args, **kwargs):
+    def __init__(self, tables, gui_def, path, *args, **kwargs):
         """Initialize the MainApplication and set the main window
 
         :param tables: name of tables that correspond to widgets which will be loaded in the main window
+        :param gui_def: path to the GUI definition file
+        :param path: current path of the application
         :param args: arguments tuple
         :param kwargs: keywords dictionary
         """
 
         super(MainApplication, self).__init__(sys.argv, *args, **kwargs)
-        self._main_window = _MainWindow(tables)  # create the main window
+        self._main_window = _MainWindow(tables, path)  # create the main window
         self._main_window.show()  # show the main window and all its content
         self._gui_def = _read_gui_definition(gui_def)  # read the GUI definition from the xml file
 
