@@ -1,6 +1,7 @@
 import data
 import view
 import error
+import os
 
 NAME_SEARCH = 'search'
 NAME_PRINT = 'print'
@@ -14,18 +15,24 @@ class MainControl:
     main_app: view.MainApplication
     main_tables: []
 
-    def __init__(self, database, db_def, gui_def):
+    def __init__(self, database, db_def, gui_def, path):
         """Initialize the main control by giving the paths of the database and the definition file.
         The main application is created and loaded with all necessary widgets.
 
         :param database: path to the database file
         :param db_def: path to the database definition file
+        :param gui_def: path to the GUI definition file
+        :param path: current path of the application
         """
 
-        self.data_con = data.DatabaseConnector(database, db_def)
+        db_path = str(os.path.join(path, database))
+        db_def_path = str(os.path.join(path, db_def))
+        gui_def_path = str(os.path.join(path, gui_def))
+
+        self.data_con = data.DatabaseConnector(db_path, db_def_path)
         self.main_tables = [data.NAME_PLAN, data.NAME_UNIT, data.NAME_EXERCISE, data.NAME_CATEGORY,
                             data.NAME_RESOURCE]  # data.NAME_CALENDAR is not yet implemented
-        self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH, NAME_PRINT], gui_def)
+        self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH, NAME_PRINT], gui_def_path, path)
         self.main_app.init_main_widget(self.main_tables)
         self.main_app.set_main_tree_widget(self._get_tree_structure())
         self._init_connectors()
@@ -51,6 +58,22 @@ class MainControl:
         self.main_app.connect_export([NAME_SEARCH], self._button_export)
         # print is only accessible from the export/print widget
         self.main_app.connect_print([NAME_PRINT], self._button_print)
+
+    def _switch_main_widget(self, name=None):
+        """Switch the main widget to a table specific one or back to the initial main widget.
+        If it is switched back to the initial main widget, the main tree widget is calculated again.
+
+        :param name: name of the table/widget to be loaded - will switch back to main if None is given
+        :return: None
+        """
+        if name is None:
+            # switch back to the main widget
+            self.main_app.switch_main_widget()
+            # calculate the new tree structure and set the main tree widget
+            self.main_app.set_main_tree_widget(self._get_tree_structure())
+        else:
+            # switch to the given widget
+            self.main_app.switch_main_widget(name)
 
     def _fill_relation_tables(self, table, main_id='', editable=True):
         """Fill the relation tables of the current widget according to the data related to the given table.
@@ -116,7 +139,7 @@ class MainControl:
         :return: None
         """
         table_name = self.main_app.get_displayed_table()  # get current table
-        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())  # get selection
+        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
 
         # check if only one row was selected
         if len(table_rows) == 0:
@@ -126,10 +149,10 @@ class MainControl:
             # too many lines selected
             self.main_app.send_critical_message('Fehler! Zu viele Zeilen ausgewählt! Bitte genau eine Zeile auswählen!')
         else:
-            self.main_app.switch_main_widget(table_name)  # switch to chosen table widget
+            self._switch_main_widget(table_name)  # switch to chosen table widget
             # get row data corresponding to chosen row
             table_data = self.data_con.get_table_content(table_name)
-            row = table_data.iloc[table_rows[0][0]]
+            row = table_data.iloc[table_rows[0]]
             # fill the widget with data and enable the save button
             self.main_app.set_fields_of_current_widget(table_name, row, edit_mode)
             self.main_app.enable_save_button(edit_mode)
@@ -146,7 +169,7 @@ class MainControl:
 
         if self.main_app.get_main_display():  # check if main display is active
             table = self.main_app.get_main_left().comboBox_tables.currentText()  # get chosen table
-            self.main_app.switch_main_widget(table)  # switch to chosen table widget
+            self._switch_main_widget(table)  # switch to chosen table widget
             self.main_app.enable_save_button(True)  # enable the save button
             self._fill_relation_tables(table)  # fill the relation table widgets in the current widget
         else:
@@ -178,7 +201,7 @@ class MainControl:
         """
 
         table_name = self.main_app.get_displayed_table()  # get current table
-        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())  # get selection
+        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
 
         # check if only one row was selected
         if len(table_rows) == 0:
@@ -188,13 +211,13 @@ class MainControl:
             # too many lines selected
             self.main_app.send_critical_message('Fehler! Zu viele Zeilen ausgewählt! Bitte genau eine Zeile auswählen!')
         else:
-            self.main_app.switch_main_widget(NAME_PRINT)  # switch to export widget
+            self._switch_main_widget(NAME_PRINT)  # switch to export widget
             # get row data corresponding to chosen row
             table_data = self.data_con.get_table_content(table_name)
-            row = table_data.iloc[table_rows[0][0]]
+            row = table_data.iloc[table_rows[0]]
             # build the tree structure and set the tree widget with the selected data
             self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name),
-                                                  self.data_con.get_table_columns(table_name))
+                                                  self.data_con.get_table_columns(table_name), True)
 
     def _button_print(self):
         """This action prints the currently displayed widget.
@@ -203,6 +226,7 @@ class MainControl:
         """
 
         self.main_app.print_widget()  # call the print dialog
+        self._switch_main_widget()  # switch back to the main widget
 
     def _button_search(self):
         """This action is called when the search button is pressed.
@@ -215,12 +239,12 @@ class MainControl:
         if self.main_app.get_main_display():
             # search can only be accessed via the main widget
             table_name = self.main_app.get_main_left().comboBox_tables.currentText()  # get chosen table name
-            self.main_app.switch_main_widget('search')  # switch to search widget
+            self._switch_main_widget('search')  # switch to search widget
             # set up the search table with the right data
             self.main_app.set_search_table(table_name, self.data_con.get_table_content(table_name))
             # set up the tree widget in the search table with the tree structure
             self.main_app.set_current_tree_widget(self._get_tree_structure(table=table_name),
-                                                  self.data_con.get_table_columns(table_name))
+                                                  self.data_con.get_table_columns(table_name), False)
         else:
             # fallback if action was improperly connected
             self.main_app.send_critical_message('Diese Funktion kann hier nicht ausgeführt werden!')
@@ -240,6 +264,7 @@ class MainControl:
         """
 
         self.data_con.rollback_changes()  # revert all changes, read data again from database
+        self.main_app.set_main_tree_widget(self._get_tree_structure())  # reset the main tree widget
 
     def _button_cancel(self):
         """This action cancels the current widget.
@@ -257,7 +282,7 @@ class MainControl:
 
             # TODO: cancel tableWidget selections
 
-        self.main_app.switch_main_widget()  # switch back to the main widget
+        self._switch_main_widget()  # switch back to the main widget
 
     def _button_save(self):
         """This action saves the currently displayed entry.
@@ -341,7 +366,11 @@ class MainControl:
                                  sub_id_name: sub_table_id}
                 self._delete_entry(rel_table_name, relation_data)  # delete the entry from the data table
 
-        self.main_app.switch_main_widget()  # switch back to the main widget after saving is completed
+        # reset all fields to the initial values
+        for field_name in fields.keys():
+            self.main_app.set_field_in_current_widget(fields[field_name], '')  # set empty data
+
+        self._switch_main_widget()  # switch back to the main widget after saving is completed
 
     def _get_data_top_down(self, main_table_name: str, main_table_id: list, table_blacklist=None) -> dict:
         """Retrieve all the data of a table from top down according to the relations.
@@ -505,7 +534,10 @@ class MainControl:
         except error.DataMismatchError:  # entry data does not match the data table
             self.main_app.send_critical_message('Fehler beim Aufbau des Tabelleneintrags! DataMismatchError')
         except error.NoDataFoundError:  # existing entry could not be found and deleted
-            self.main_app.send_critical_message('Fehler beim Modifizieren eines Tabelleneintrags! NoDataFoundError')
+            if self.data_con.is_relation_table(table_name):
+                return -1
+            else:
+                self.main_app.send_critical_message('Fehler beim Löschen eines Tabelleneintrags! NoDataFoundError')
 
     def _save_entry(self, table_name, data_entry) -> int:
         """Save an entry to the table.

@@ -1,0 +1,27 @@
+@startuml
+(*) --> "Applikation starten"
+--> "Objektart auswählen"
+note right
+  Es können alle Objektarten ausgewählt werden,
+  es sind aber nur die Haupt-Objekte für diese Aktivität sinnvoll,
+  also EXERCISE, UNIT und PLAN.
+end note
+--> "Suchen-Button klicken"
+if "Objektart" then
+  --> [EXERCISE] "Suche nach Übung"
+  --> "Auswahl einer Übung"
+  --> "Export-Button klicken"
+else
+  --> [UNIT] "Suche nach Einheit"
+  --> "Auswahl einer Einheit"
+  --> "Export-Button klicken"
+else
+  --> [PLAN] "Suche nach Plan"
+  --> "Auswahl eines Plans"
+  --> "Export-Button klicken"
+endif
+--> "Drucken-Button klicken"
+--> "Dateiname eingeben"
+--> "Datei wurde exportiert"
+--> (*)
+@enduml

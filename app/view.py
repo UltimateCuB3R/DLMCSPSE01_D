@@ -6,6 +6,7 @@ from PyQt5.QtPrintSupport import QPrinter  # QPrintDialog, QPrintPreviewDialog
 import xml.etree.ElementTree as ElTr
 import error
 import sys
+import os
 
 
 class _MainWindow(QMainWindow):
@@ -19,22 +20,23 @@ class _MainWindow(QMainWindow):
     main_display: bool
     detail_widgets: dict[str, QWidget]
 
-    def __init__(self, widgets, *args, **kwargs):
+    def __init__(self, widgets, path, *args, **kwargs):
         """Initialize the main window with the main widgets.
         Load all table specific widgets into a dictionary to easily swap them out at runtime.
 
         :param widgets: name of widgets which need to be loaded
+        :param path: current path of the application
         :param args: arguments tuple
         :param kwargs: keywords dictionary
         """
 
         super(_MainWindow, self).__init__(*args, **kwargs)
-        uic.loadUi('view/main.ui', self)  # load main layout
+        uic.loadUi(os.path.join(path, 'view\\main.ui'), self)  # load main layout
         self.setWindowTitle('sportApp - main')  # set the main window title
 
         self.main_layout = self.horizontalLayout_main_widget
-        self.main_left = uic.loadUi('view/main_left.ui')  # load left main widget
-        self.main_right = uic.loadUi('view/main_right.ui')  # load right main widget
+        self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left.ui'))  # load left main widget
+        self.main_right = uic.loadUi(os.path.join(path, 'view\\main_right.ui'))  # load right main widget
         self.main_layout.addWidget(self.main_left)  # add left main widget to the layout
         self.main_layout.addWidget(self.main_right)  # add right main widget to the layout
         self.main_display = True  # main display is active
@@ -43,7 +45,7 @@ class _MainWindow(QMainWindow):
         for name in widgets:  # iterate through the given widget names
             try:
                 # load the widget into the dict and hide it
-                self.detail_widgets[name] = uic.loadUi('view/' + name + '_widget.ui')
+                self.detail_widgets[name] = uic.loadUi(os.path.join(path, 'view/' + name + '_widget.ui'))
                 self.detail_widgets[name].hide()
             except FileNotFoundError:
                 # file could not be found, so widget cannot be loaded
@@ -110,16 +112,18 @@ class MainApplication(QApplication):
     _main_window: _MainWindow
     _gui_def: dict[str, list]
 
-    def __init__(self, tables, gui_def, *args, **kwargs):
+    def __init__(self, tables, gui_def, path, *args, **kwargs):
         """Initialize the MainApplication and set the main window
 
         :param tables: name of tables that correspond to widgets which will be loaded in the main window
+        :param gui_def: path to the GUI definition file
+        :param path: current path of the application
         :param args: arguments tuple
         :param kwargs: keywords dictionary
         """
 
         super(MainApplication, self).__init__(sys.argv, *args, **kwargs)
-        self._main_window = _MainWindow(tables)  # create the main window
+        self._main_window = _MainWindow(tables, path)  # create the main window
         self._main_window.show()  # show the main window and all its content
         self._gui_def = _read_gui_definition(gui_def)  # read the GUI definition from the xml file
 
@@ -607,7 +611,7 @@ class MainApplication(QApplication):
             self.send_critical_message('Fehler beim Setzen der Felder im aktuellen Widget!')
 
     @staticmethod
-    def _set_tree_structure(tree_widget: QTreeWidget, tree_items, header_labels, column_count=6):
+    def _set_tree_structure(tree_widget: QTreeWidget, tree_items, header_labels, column_count=6, expand_all=False):
         """Set the tree structure of the given QTreeWidget.
 
         :param tree_widget: QTreeWidget that shall be changed
@@ -619,8 +623,11 @@ class MainApplication(QApplication):
 
         tree_widget.setColumnCount(column_count)
         tree_widget.setHeaderLabels(header_labels)
+        tree_widget.clear()  # remove all items that are currently stored
         tree_widget.insertTopLevelItems(0, tree_items)
         tree_widget.header().setSectionResizeMode(QHeaderView.ResizeToContents)  # activate auto-resize
+        if expand_all:
+            tree_widget.expandAll()  # auto-expand the tree
 
     @staticmethod
     def create_tree_item(name, item_data, child_items):
@@ -649,16 +656,17 @@ class MainApplication(QApplication):
 
         return tree_item
 
-    def set_current_tree_widget(self, tree_items, header):
+    def set_current_tree_widget(self, tree_items, header, expand_all: bool):
         """Set the tree widget in the currently displayed widget (not main widget)
 
+        :param expand_all: expand all items of the tree if True
         :param tree_items: top level items that define the tree structure
         :param header: labels of the header columns
         :return: None
         """
 
         header_labels = ['Objekt'] + header
-        self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6)
+        self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6, expand_all)
 
     def get_current_tree_widget(self):
         """Retrieve the tree widget of the currently displayed widget
@@ -676,7 +684,7 @@ class MainApplication(QApplication):
         """
 
         header_labels = ['Objekt', 'ID', '', '', '', '']
-        self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6)
+        self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6, False)
 
     def print_widget(self):
         """Print the current widget as a viewable file
