@@ -18,6 +18,16 @@
     <layout class="QFormLayout" name="formLayout">
      <item row="0" column="0">
       <widget class="QLabel" name="label_id">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>8</pointsize>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
        <property name="text">
         <string>ID</string>
        </property>
@@ -27,6 +37,9 @@
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <widget class="QLineEdit" name="lineEdit_id">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="readOnly">
           <bool>true</bool>
          </property>
@@ -34,6 +47,9 @@
        </item>
        <item>
         <widget class="QLabel" name="label_table_name">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>PLAN</string>
          </property>
@@ -43,6 +59,13 @@
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_name">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Name</string>
        </property>
@@ -50,6 +73,11 @@
      </item>
      <item row="1" column="1">
       <widget class="QLineEdit" name="lineEdit_name">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string extracomment="Name der Übung"/>
        </property>
@@ -57,16 +85,34 @@
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_description">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Beschreibung</string>
        </property>
       </widget>
      </item>
      <item row="2" column="1">
-      <widget class="QTextEdit" name="textEdit_description"/>
+      <widget class="QTextEdit" name="textEdit_description">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
+      </widget>
      </item>
      <item row="3" column="1">
       <widget class="QTableWidget" name="table_unit">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
        </property>
@@ -86,8 +132,15 @@
      </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_link_unit">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
-        <string>Einheiten verknüpfen</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Einheiten&lt;/p&gt;&lt;p&gt;verknüpfen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
@@ -97,6 +150,11 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="pushButton_save">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Speichern</string>
        </property>
@@ -104,6 +162,11 @@
      </item>
      <item>
       <widget class="QPushButton" name="pushButton_cancel">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Abbrechen</string>
        </property>

@@ -33,7 +33,7 @@ class MainControl:
         self.main_tables = [data.NAME_PLAN, data.NAME_UNIT, data.NAME_EXERCISE, data.NAME_CATEGORY,
                             data.NAME_RESOURCE]  # data.NAME_CALENDAR is not yet implemented
         self.main_app = view.MainApplication(self.main_tables + [NAME_SEARCH, NAME_PRINT], gui_def_path, path)
-        self.main_app.init_main_widget(self.main_tables)
+        self.main_app.init_main_widget(self.main_tables, self._get_data_of_tables(self.main_tables))
         self.main_app.set_main_tree_widget(self._get_tree_structure())
         self._init_connectors()
 
@@ -71,6 +71,7 @@ class MainControl:
             self.main_app.switch_main_widget()
             # calculate the new tree structure and set the main tree widget
             self.main_app.set_main_tree_widget(self._get_tree_structure())
+            self.main_app.init_main_widget(self.main_tables, self._get_data_of_tables(self.main_tables))
         else:
             # switch to the given widget
             self.main_app.switch_main_widget(name)
@@ -125,6 +126,9 @@ class MainControl:
                         sub_table_data['ID'].isin(selected_sub_table_data['ID'])].index.to_list()
                     # set the selection in the table widget
                     self.main_app.set_relation_table_selection(sub_table, selected_rows)
+                else:
+                    # clear the selection in the table widget
+                    self.main_app.set_relation_table_selection(sub_table, [])
 
             else:
                 # table name contains two underscores, logic cannot apply
@@ -159,7 +163,7 @@ class MainControl:
             # fill the relation tables with data
             self._fill_relation_tables(table_name, row['ID'], edit_mode)
 
-    def _button_create(self):
+    def _button_create(self, button_name):
         """This action is called when the create button is pressed.
         The widget according to the chosen table is loaded in creation mode.
         Any existing relation tables to the chosen table are loaded into the widget.
@@ -168,9 +172,11 @@ class MainControl:
         """
 
         if self.main_app.get_main_display():  # check if main display is active
-            table = self.main_app.get_main_left().comboBox_tables.currentText()  # get chosen table
+            # table = self.main_app.get_main_left().comboBox_tables.currentText()  # get chosen table
+            table = button_name.split('_')[1].upper()
             self._switch_main_widget(table)  # switch to chosen table widget
             self.main_app.enable_save_button(True)  # enable the save button
+            self.main_app.set_fields_of_current_widget(table, editable=True)  # set fields editable
             self._fill_relation_tables(table)  # fill the relation table widgets in the current widget
         else:
             # if main display is not active, creation process cannot be started
@@ -228,7 +234,7 @@ class MainControl:
         self.main_app.print_widget()  # call the print dialog
         self._switch_main_widget()  # switch back to the main widget
 
-    def _button_search(self):
+    def _button_search(self, button_name):
         """This action is called when the search button is pressed.
         The central search widget is loaded with the corresponding table data of the chosen table.
         Additionally, the tree structure for the chosen table is also loaded.
@@ -238,7 +244,8 @@ class MainControl:
 
         if self.main_app.get_main_display():
             # search can only be accessed via the main widget
-            table_name = self.main_app.get_main_left().comboBox_tables.currentText()  # get chosen table name
+            # table_name = self.main_app.get_main_left().comboBox_tables.currentText()  # get chosen table name
+            table_name = button_name.split('_')[1].upper()
             self._switch_main_widget('search')  # switch to search widget
             # set up the search table with the right data
             self.main_app.set_search_table(table_name, self.data_con.get_table_content(table_name))
@@ -371,6 +378,23 @@ class MainControl:
             self.main_app.set_field_in_current_widget(fields[field_name], '')  # set empty data
 
         self._switch_main_widget()  # switch back to the main widget after saving is completed
+
+    def _get_data_of_tables(self, table_names: list) -> dict:
+        """Retrieve all the data of the given list of table names.
+        All table data will be stored in a dictionary that is returned.
+
+        :param table_names: list of table names
+        :return: dictionary of table names and corresponding table data
+        """
+
+        return_data = {}
+
+        for table in table_names:
+            # retrieve table data and insert into dict
+            table_data = self.data_con.get_table_content(table)
+            return_data[table] = table_data
+
+        return return_data
 
     def _get_data_top_down(self, main_table_name: str, main_table_id: list, table_blacklist=None) -> dict:
         """Retrieve all the data of a table from top down according to the relations.

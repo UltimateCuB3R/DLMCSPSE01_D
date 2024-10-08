@@ -35,9 +35,12 @@ class _MainWindow(QMainWindow):
         self.setWindowTitle('sportApp - main')  # set the main window title
 
         self.main_layout = self.horizontalLayout_main_widget
-        self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left.ui'))  # load left main widget
+        # self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left.ui'))  # load left main widget
+        # self.main_left_2 = uic.loadUi(os.path.join(path, 'view\\main_left_2.ui'))  # load left main widget
+        self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left_2.ui'))  # load left main widget
         self.main_right = uic.loadUi(os.path.join(path, 'view\\main_right.ui'))  # load right main widget
         self.main_layout.addWidget(self.main_left)  # add left main widget to the layout
+        # self.main_layout.addWidget(self.main_left_2)  # add left main widget to the layout
         self.main_layout.addWidget(self.main_right)  # add right main widget to the layout
         self.main_display = True  # main display is active
 
@@ -146,7 +149,21 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        self.get_main_left().pushButton_create.clicked.connect(action)
+        # self.get_main_left().pushButton_create.clicked.connect(action)
+
+        buttons = self.get_main_window().findChildren(QPushButton)
+        for button in buttons:
+            button_clicked = button.objectName()
+            if 'create' in button_clicked:
+                button.clicked.connect(self._make_button_action(action, button_clicked))
+
+    @staticmethod
+    def _make_button_action(action, name):
+        # function factory to give the button name into the given function
+        def button_action():
+            action(name)
+
+        return button_action
 
     def connect_display(self, tables, action):
         """Connect the display button of all specified widgets to the corresponding method
@@ -203,7 +220,13 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        self.get_main_left().pushButton_search.clicked.connect(action)
+        # self.get_main_left().pushButton_search.clicked.connect(action)
+
+        buttons = self.get_main_window().findChildren(QPushButton)
+        for button in buttons:
+            button_clicked = button.objectName()
+            if 'search' in button_clicked:
+                button.clicked.connect(self._make_button_action(action, button_clicked))
 
     def connect_commit(self, action):
         """Connect the commit button of the main widget to the corresponding method
@@ -399,15 +422,17 @@ class MainApplication(QApplication):
             # no table widget with the given name could be found
             raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
-    def init_main_widget(self, combobox):
+    def init_main_widget(self, tables, table_data):
         """Initialize the main widget with values
 
-        :param combobox: values of tables that need to be added to the main combobox
+        :param tables: values of tables that need to be processed
+        :param table_data: dictionary of table data
         :return: None
         """
 
-        # Set Table Combobox
-        self.get_main_left().comboBox_tables.addItems(combobox)
+        for table in tables:
+            table_widget = self.get_main_left().findChild(QTableWidget, 'tableWidget_' + table.lower())
+            self._set_table_widget(table_widget, table_data[table], 2)
 
     def send_critical_message(self, message):
         """Send a critical message to the user and block the current widget until the message is confirmed
@@ -428,7 +453,7 @@ class MainApplication(QApplication):
         QMessageBox.information(self.get_current_widget(), 'INFORMATION', message)
 
     @staticmethod
-    def _set_table_widget(table_widget, table_data):
+    def _set_table_widget(table_widget, table_data, max_columns=0):
         """Set the contents of the table widget to the given table data
 
         :param table_widget: QTableWidget object
@@ -438,17 +463,22 @@ class MainApplication(QApplication):
 
         # set the main settings of the table widget corresponding to the given data
         table_widget.setRowCount(len(table_data.index))
-        table_widget.setColumnCount(len(table_data.columns))
+        if max_columns == 0:
+            table_widget.setColumnCount(len(table_data.columns))
+        else:
+            table_widget.setColumnCount(max_columns)
         table_widget.setHorizontalHeaderLabels(table_data.columns.to_list())
 
         index = 0
         for key, row in table_data.iterrows():  # iterate through the given data
             col_index = 0
             for column in table_data.columns:  # iterate through the columns
-                # create a widget item and set it to the corresponding row/column
-                table_widget.setItem(index, col_index, QTableWidgetItem(str(row[column])))
-                col_index += 1
+                if max_columns == 0 or col_index < max_columns:
+                    # create a widget item and set it to the corresponding row/column
+                    table_widget.setItem(index, col_index, QTableWidgetItem(str(row[column])))
+                    col_index += 1
             index += 1
+        table_widget.resizeColumnsToContents()
 
     @staticmethod
     def _set_table_widget_selection(table_widget, table_rows):
@@ -534,6 +564,7 @@ class MainApplication(QApplication):
         table_widget = self.get_current_widget().findChild(QTableWidget)
 
         self._set_table_widget(table_widget, table_data)  # set the table widget to the given data
+        self._set_table_widget_selection(table_widget, [])  # clear the table widget selection
         self.get_current_widget().label_table_name.setText(table_name)  # set the table name
 
     def get_item_of_table_widget(self, widget_name, row, column) -> str:
@@ -571,7 +602,7 @@ class MainApplication(QApplication):
             # field type is unknown, so no data can be retrieved
             self.send_critical_message('Fehler beim Lesen der Felder im aktuellen Widget!')
 
-    def set_fields_of_current_widget(self, table_name, row_data, editable=True):
+    def set_fields_of_current_widget(self, table_name, row_data=None, editable=True):
         """Set all fields of the current widget to the corresponding value from the given data
 
         :param table_name: name of the table that is currently displayed
@@ -582,7 +613,8 @@ class MainApplication(QApplication):
 
         fields = self.get_gui_definition()[table_name][1]  # get the fields of the given table
         for field in fields.keys():  # iterate through all fields and set the data
-            self.set_field_in_current_widget(fields[field], row_data[field])
+            if row_data is not None:
+                self.set_field_in_current_widget(fields[field], row_data[field])
             self._set_field_editable(fields[field], editable)
 
     def set_field_in_current_widget(self, field_name, field_data):
@@ -692,7 +724,8 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None, 'PDF files (.pdf);;All Files()')
+        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None,
+                                                  'PDF files (.pdf);;All Files()')
         if filename != '':
             if QFileInfo(filename).suffix() == '':
                 filename += '.pdf'

@@ -18,6 +18,11 @@
     <layout class="QFormLayout" name="formLayout">
      <item row="0" column="1">
       <widget class="QTableWidget" name="tableWidget_search">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
        </property>
@@ -43,6 +48,11 @@
      </item>
      <item row="0" column="0">
       <widget class="QLabel" name="label_table_name">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>TABLE_NAME</string>
        </property>
@@ -50,6 +60,14 @@
      </item>
      <item row="1" column="1">
       <widget class="QTreeWidget" name="treeWidget">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
        </property>
@@ -119,6 +137,14 @@
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_tree">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Strukturübersicht</string>
        </property>
@@ -130,6 +156,11 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="pushButton_display">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Anzeigen</string>
        </property>
@@ -137,6 +168,11 @@
      </item>
      <item>
       <widget class="QPushButton" name="pushButton_edit">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Bearbeiten</string>
        </property>
@@ -144,6 +180,11 @@
      </item>
      <item>
       <widget class="QPushButton" name="pushButton_export">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Exportieren</string>
        </property>
@@ -151,6 +192,11 @@
      </item>
      <item>
       <widget class="QPushButton" name="pushButton_cancel">
+       <property name="font">
+        <font>
+         <pointsize>12</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Abbrechen</string>
        </property>
