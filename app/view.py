@@ -1,4 +1,4 @@
-# from PyQt5.QtGui import *
+from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
@@ -53,6 +53,40 @@ class _MainWindow(QMainWindow):
             except FileNotFoundError:
                 # file could not be found, so widget cannot be loaded
                 continue
+
+            # set the icon for all buttons of the detail widgets
+            for button in self.detail_widgets[name].findChildren(QPushButton):
+                self.__set_button_icon(button)
+
+        # set the icon for all buttons on the main widget
+        for button in self.findChildren(QPushButton):
+            self.__set_button_icon(button)
+
+    def __set_button_icon(self, button):
+        """Set the icon of a button corresponding to the button name
+
+        :param button: pushButton for that the icon needs to be set
+        :return: None
+        """
+
+        if 'create' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_FileIcon')))
+        elif 'cancel' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogCancelButton')))
+        elif 'display' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_FileLinkIcon')))
+        elif 'search' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_FileDialogContentsView')))
+        elif 'edit' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogResetButton')))
+        elif 'export' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DriveFDIcon')))
+        elif 'print' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DriveFDIcon')))
+        elif 'save' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogSaveButton')))
+        elif 'revert' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_BrowserReload')))
 
     def switch_main_widget(self, name=None):
         """Switch the main widget to a table specific widget if given - else switch back to the initial main widget
@@ -129,6 +163,7 @@ class MainApplication(QApplication):
         self._main_window = _MainWindow(tables, path)  # create the main window
         self._main_window.show()  # show the main window and all its content
         self._gui_def = _read_gui_definition(gui_def)  # read the GUI definition from the xml file
+        self.setStyle('Fusion')  # different style for better readability
 
     def _set_field_editable(self, field_name, editable):
         """Set a given field to be editable or not
@@ -142,6 +177,18 @@ class MainApplication(QApplication):
         field = self.get_current_widget().findChild(QObject, field_name)
         field.setReadOnly(not editable)
 
+    def connect_table_click(self, action):
+        table_widgets = self.get_main_left().findChildren(QTableWidget)
+        for widget in table_widgets:
+            widget_clicked = widget.objectName()
+            if 'tableMain' in widget_clicked:
+                widget.doubleClicked.connect(self._make_widget_action(action, widget_clicked))
+
+        # connect search table click
+        widget = self._main_window.detail_widgets['search'].tableWidget_search
+        widget_clicked = widget.objectName()
+        widget.doubleClicked.connect(self._make_widget_action(action, widget_clicked))
+
     def connect_create(self, action):
         """Connect the create button of the main widget to the corresponding method
 
@@ -149,21 +196,19 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        # self.get_main_left().pushButton_create.clicked.connect(action)
-
-        buttons = self.get_main_window().findChildren(QPushButton)
+        buttons = self.get_main_left().findChildren(QPushButton)
         for button in buttons:
             button_clicked = button.objectName()
             if 'create' in button_clicked:
-                button.clicked.connect(self._make_button_action(action, button_clicked))
+                button.clicked.connect(self._make_widget_action(action, button_clicked))
 
     @staticmethod
-    def _make_button_action(action, name):
-        # function factory to give the button name into the given function
-        def button_action():
+    def _make_widget_action(action, name):
+        # function factory to give the widget name into the given function
+        def widget_action():
             action(name)
 
-        return button_action
+        return widget_action
 
     def connect_display(self, tables, action):
         """Connect the display button of all specified widgets to the corresponding method
@@ -220,13 +265,11 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        # self.get_main_left().pushButton_search.clicked.connect(action)
-
         buttons = self.get_main_window().findChildren(QPushButton)
         for button in buttons:
             button_clicked = button.objectName()
             if 'search' in button_clicked:
-                button.clicked.connect(self._make_button_action(action, button_clicked))
+                button.clicked.connect(self._make_widget_action(action, button_clicked))
 
     def connect_commit(self, action):
         """Connect the commit button of the main widget to the corresponding method
@@ -393,7 +436,7 @@ class MainApplication(QApplication):
         """
 
         # find the table widget in the current widget with the given name
-        table_widget = self.get_current_widget().findChild(QTableWidget, table_widget_name)
+        table_widget = self._main_window.findChild(QTableWidget, table_widget_name)
 
         if table_widget is not None:  # check if a table widget was found
             rows = self._get_selection_of_widget(table_widget)  # retrieve the selected rows
@@ -431,7 +474,7 @@ class MainApplication(QApplication):
         """
 
         for table in tables:
-            table_widget = self.get_main_left().findChild(QTableWidget, 'tableWidget_' + table.lower())
+            table_widget = self.get_main_left().findChild(QTableWidget, 'tableMain_' + table.lower())
             self._set_table_widget(table_widget, table_data[table], 2)
 
     def send_critical_message(self, message):
@@ -467,7 +510,15 @@ class MainApplication(QApplication):
             table_widget.setColumnCount(len(table_data.columns))
         else:
             table_widget.setColumnCount(max_columns)
+
         table_widget.setHorizontalHeaderLabels(table_data.columns.to_list())
+        """index = 0
+        for column in table_data.columns.to_list():
+            header_item = QTableWidgetItem(column)
+            header_item.setBackground(QColor(211, 211, 211))
+            table_widget.setHorizontalHeaderItem(index, header_item)
+            index += 1
+        """
 
         index = 0
         for key, row in table_data.iterrows():  # iterate through the given data

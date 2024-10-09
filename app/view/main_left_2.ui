@@ -24,6 +24,9 @@
        <underline>true</underline>
       </font>
      </property>
+     <property name="styleSheet">
+      <string notr="true">background:rgb(85, 170, 127)</string>
+     </property>
      <property name="text">
       <string>Plan</string>
      </property>
@@ -37,7 +40,7 @@
         <widget class="QPushButton" name="pushButton_plan_create">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="toolTip">
@@ -55,7 +58,7 @@
         <widget class="QPushButton" name="pushButton_plan_search">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="autoFillBackground">
@@ -69,7 +72,12 @@
       </layout>
      </item>
      <item>
-      <widget class="QTableWidget" name="tableWidget_plan">
+      <widget class="QTableWidget" name="tableMain_plan">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="sizeAdjustPolicy">
         <enum>QAbstractScrollArea::AdjustToContents</enum>
        </property>
@@ -79,12 +87,27 @@
        <property name="showDropIndicator" stdset="0">
         <bool>false</bool>
        </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::SingleSelection</enum>
        </property>
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
+       <property name="showGrid">
+        <bool>true</bool>
+       </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+       <property name="cornerButtonEnabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
+       </attribute>
       </widget>
      </item>
     </layout>
@@ -99,6 +122,9 @@
        <underline>true</underline>
       </font>
      </property>
+     <property name="styleSheet">
+      <string notr="true">background:rgb(85, 170, 127)</string>
+     </property>
      <property name="text">
       <string>Einheit</string>
      </property>
@@ -112,7 +138,7 @@
         <widget class="QPushButton" name="pushButton_unit_create">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="toolTip">
@@ -130,7 +156,7 @@
         <widget class="QPushButton" name="pushButton_unit_search">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="autoFillBackground">
@@ -144,12 +170,20 @@
       </layout>
      </item>
      <item>
-      <widget class="QTableWidget" name="tableWidget_unit">
+      <widget class="QTableWidget" name="tableMain_unit">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="sizeAdjustPolicy">
         <enum>QAbstractScrollArea::AdjustToContents</enum>
        </property>
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
        </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::SingleSelection</enum>
@@ -157,6 +191,15 @@
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+       <property name="cornerButtonEnabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
+       </attribute>
       </widget>
      </item>
     </layout>
@@ -170,6 +213,9 @@
        <bold>true</bold>
        <underline>true</underline>
       </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background:rgb(85, 170, 127)</string>
      </property>
      <property name="text">
       <string>Übung</string>
@@ -187,7 +233,7 @@
         <widget class="QPushButton" name="pushButton_exercise_create">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="toolTip">
@@ -205,7 +251,7 @@
         <widget class="QPushButton" name="pushButton_exercise_search">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="autoFillBackground">
@@ -219,12 +265,20 @@
       </layout>
      </item>
      <item>
-      <widget class="QTableWidget" name="tableWidget_exercise">
+      <widget class="QTableWidget" name="tableMain_exercise">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="sizeAdjustPolicy">
         <enum>QAbstractScrollArea::AdjustToContents</enum>
        </property>
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
        </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::SingleSelection</enum>
@@ -232,6 +286,15 @@
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+       <property name="cornerButtonEnabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
+       </attribute>
       </widget>
      </item>
     </layout>
@@ -245,6 +308,12 @@
        <bold>true</bold>
        <underline>true</underline>
       </font>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background:rgb(255, 170, 127)</string>
      </property>
      <property name="text">
       <string>Kategorie</string>
@@ -262,7 +331,7 @@
         <widget class="QPushButton" name="pushButton_category_create">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="autoFillBackground">
@@ -277,7 +346,7 @@
         <widget class="QPushButton" name="pushButton_category_search">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="autoFillBackground">
@@ -291,12 +360,20 @@
       </layout>
      </item>
      <item>
-      <widget class="QTableWidget" name="tableWidget_category">
+      <widget class="QTableWidget" name="tableMain_category">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="sizeAdjustPolicy">
         <enum>QAbstractScrollArea::AdjustToContents</enum>
        </property>
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
        </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::SingleSelection</enum>
@@ -304,6 +381,15 @@
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+       <property name="cornerButtonEnabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
+       </attribute>
       </widget>
      </item>
     </layout>
@@ -317,6 +403,12 @@
        <bold>true</bold>
        <underline>true</underline>
       </font>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background:rgb(255, 170, 127)</string>
      </property>
      <property name="text">
       <string>Ressource</string>
@@ -334,7 +426,7 @@
         <widget class="QPushButton" name="pushButton_resource_create">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="autoFillBackground">
@@ -349,7 +441,7 @@
         <widget class="QPushButton" name="pushButton_resource_search">
          <property name="font">
           <font>
-           <pointsize>12</pointsize>
+           <pointsize>10</pointsize>
           </font>
          </property>
          <property name="autoFillBackground">
@@ -363,12 +455,20 @@
       </layout>
      </item>
      <item>
-      <widget class="QTableWidget" name="tableWidget_resource">
+      <widget class="QTableWidget" name="tableMain_resource">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="sizeAdjustPolicy">
         <enum>QAbstractScrollArea::AdjustToContents</enum>
        </property>
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
        </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::SingleSelection</enum>
@@ -376,6 +476,21 @@
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+       <property name="cornerButtonEnabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="horizontalHeaderCascadingSectionResizes">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+        <bool>true</bool>
+       </attribute>
       </widget>
      </item>
     </layout>

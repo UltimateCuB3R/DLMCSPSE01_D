@@ -48,6 +48,8 @@ class MainControl:
         self.main_app.connect_search(self._button_search)
         self.main_app.connect_commit(self._button_commit)
         self.main_app.connect_revert(self._button_revert)
+        self.main_app.connect_table_click(self._table_clicked)
+
         # save is only accessible from the detail widgets
         self.main_app.connect_save(self.main_tables, self._button_save)
         # cancel is accessible from all detail and additional widgets, but not the main widget
@@ -135,15 +137,15 @@ class MainControl:
                 self.main_app.send_critical_message(
                     f'Fehler! Datenbankschema oder Programmierung falsch für {table}!')
 
-    def __show_widget(self, edit_mode=True):
+    def __show_widget(self, table_name, table_rows, edit_mode=True):
         """Show the chosen widget and fill the widget fields with data.
         Set edit_mode to define if data should be editable or not.
 
         :param edit_mode: True if data should be editable and save button enabled.
         :return: None
         """
-        table_name = self.main_app.get_displayed_table()  # get current table
-        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
+        # table_name = self.main_app.get_displayed_table()  # get current table
+        # table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
 
         # check if only one row was selected
         if len(table_rows) == 0:
@@ -162,6 +164,24 @@ class MainControl:
             self.main_app.enable_save_button(edit_mode)
             # fill the relation tables with data
             self._fill_relation_tables(table_name, row['ID'], edit_mode)
+
+    def _table_clicked(self, widget_name):
+        """This action is called when a main table is double-clicked.
+        The item according to the clicked table is loaded in display mode.
+
+        :return: None
+        """
+
+        if self.main_app.get_main_display() or 'search' in widget_name:  # check if main display is active
+            if 'search' in widget_name:
+                table_name = self.main_app.get_displayed_table()
+            else:
+                table_name = widget_name.split('_')[1].upper()
+            table_rows = self.main_app.get_selected_rows_of_widget(widget_name)  # get selection
+            self.__show_widget(table_name, table_rows, False)
+        else:
+            # if main display is not active, creation process cannot be started
+            self.main_app.send_critical_message('Fehler! Funktion kann hier nicht ausgeführt werden!')
 
     def _button_create(self, button_name):
         """This action is called when the create button is pressed.
@@ -189,7 +209,10 @@ class MainControl:
         :return: None
         """
 
-        self.__show_widget(False)  # show the widget in display mode
+        table_name = self.main_app.get_displayed_table()  # get current table
+        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
+
+        self.__show_widget(table_name, table_rows, False)  # show the widget in display mode
 
     def _button_edit(self):
         """This action calls the detail widget of the chosen table with the selected entry.
@@ -198,7 +221,10 @@ class MainControl:
         :return: None
         """
 
-        self.__show_widget(True)  # show the widget in edit mode
+        table_name = self.main_app.get_displayed_table()  # get current table
+        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
+
+        self.__show_widget(table_name, table_rows, True)  # show the widget in edit mode
 
     def _button_export(self):
         """This action calls the print widget of the chosen table with the selected entry.

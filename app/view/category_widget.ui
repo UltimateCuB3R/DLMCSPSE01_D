@@ -169,14 +169,20 @@
        <property name="dragDropOverwriteMode">
         <bool>false</bool>
        </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
        <property name="selectionMode">
-        <enum>QAbstractItemView::ExtendedSelection</enum>
+        <enum>QAbstractItemView::MultiSelection</enum>
        </property>
        <property name="selectionBehavior">
         <enum>QAbstractItemView::SelectRows</enum>
        </property>
        <attribute name="horizontalHeaderCascadingSectionResizes">
         <bool>true</bool>
+       </attribute>
+       <attribute name="horizontalHeaderHighlightSections">
+        <bool>false</bool>
        </attribute>
       </widget>
      </item>
@@ -196,13 +202,19 @@
        <property name="dragDropOverwriteMode">
         <bool>false</bool>
        </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
        <property name="selectionMode">
-        <enum>QAbstractItemView::ExtendedSelection</enum>
+        <enum>QAbstractItemView::MultiSelection</enum>
        </property>
        <property name="selectionBehavior">
-        <enum>QAbstractItemView::SelectItems</enum>
+        <enum>QAbstractItemView::SelectRows</enum>
        </property>
        <attribute name="horizontalHeaderCascadingSectionResizes">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="horizontalHeaderHighlightSections">
         <bool>false</bool>
        </attribute>
       </widget>

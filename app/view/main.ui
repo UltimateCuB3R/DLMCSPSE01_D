@@ -21,14 +21,16 @@
        <widget class="QPushButton" name="pushButton_revert_db">
         <property name="font">
          <font>
-          <pointsize>12</pointsize>
+          <pointsize>10</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
         </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Änderungen verwerfen&lt;/p&gt;&lt;p&gt;Datenbank auf den letzten gesicherten Stand zurücksetzen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
-         <string>Änderungen verwerfen und 
-Datenbankinhalte neu laden</string>
+         <string>Änderungen verwerfen</string>
         </property>
        </widget>
       </item>
@@ -36,13 +38,16 @@ Datenbankinhalte neu laden</string>
        <widget class="QPushButton" name="pushButton_save_db">
         <property name="font">
          <font>
-          <pointsize>12</pointsize>
+          <pointsize>10</pointsize>
           <weight>75</weight>
           <bold>true</bold>
          </font>
         </property>
+        <property name="toolTip">
+         <string>Änderungen auf der Datenbank sichern</string>
+        </property>
         <property name="text">
-         <string>Änderungen auf Datenbank sichern</string>
+         <string>Änderungen sichern</string>
         </property>
        </widget>
       </item>
