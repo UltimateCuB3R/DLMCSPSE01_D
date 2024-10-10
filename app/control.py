@@ -50,8 +50,9 @@ class MainControl:
         self.main_app.connect_revert(self._button_revert)
         self.main_app.connect_table_click(self._table_clicked)
 
-        # save is only accessible from the detail widgets
+        # save and delete are only accessible from the detail widgets
         self.main_app.connect_save(self.main_tables, self._button_save)
+        self.main_app.connect_delete(self.main_tables, self._button_delete)
         # cancel is accessible from all detail and additional widgets, but not the main widget
         self.main_app.connect_cancel(self.main_tables + [NAME_SEARCH, NAME_PRINT], self._button_cancel)
         # display, edit and export are only accessible from the search widget
@@ -159,9 +160,10 @@ class MainControl:
             # get row data corresponding to chosen row
             table_data = self.data_con.get_table_content(table_name)
             row = table_data.iloc[table_rows[0]]
-            # fill the widget with data and enable the save button
+            # fill the widget with data and enable the save and delete buttons
             self.main_app.set_fields_of_current_widget(table_name, row, edit_mode)
             self.main_app.enable_save_button(edit_mode)
+            self.main_app.enable_delete_button(True)
             # fill the relation tables with data
             self._fill_relation_tables(table_name, row['ID'], edit_mode)
 
@@ -178,7 +180,7 @@ class MainControl:
             else:
                 table_name = widget_name.split('_')[1].upper()
             table_rows = self.main_app.get_selected_rows_of_widget(widget_name)  # get selection
-            self.__show_widget(table_name, table_rows, False)
+            self.__show_widget(table_name, table_rows, False)  # show the widget in display mode
         else:
             # if main display is not active, creation process cannot be started
             self.main_app.send_critical_message('Fehler! Funktion kann hier nicht ausgeführt werden!')
@@ -196,6 +198,7 @@ class MainControl:
             table = button_name.split('_')[1].upper()
             self._switch_main_widget(table)  # switch to chosen table widget
             self.main_app.enable_save_button(True)  # enable the save button
+            self.main_app.enable_delete_button(False)  # disable the delete button
             self.main_app.set_fields_of_current_widget(table, editable=True)  # set fields editable
             self._fill_relation_tables(table)  # fill the relation table widgets in the current widget
         else:
@@ -298,6 +301,7 @@ class MainControl:
 
         self.data_con.rollback_changes()  # revert all changes, read data again from database
         self.main_app.set_main_tree_widget(self._get_tree_structure())  # reset the main tree widget
+        self.main_app.init_main_widget(self.main_tables, self._get_data_of_tables(self.main_tables))  # reset all tables
 
     def _button_cancel(self):
         """This action cancels the current widget.
@@ -404,6 +408,50 @@ class MainControl:
             self.main_app.set_field_in_current_widget(fields[field_name], '')  # set empty data
 
         self._switch_main_widget()  # switch back to the main widget after saving is completed
+
+    def _button_delete(self):
+        """This action deletes the currently displayed entry.
+
+        :return: None
+        """
+
+        # retrieve the table name from GUI and the GUI definition from the main app
+        table_name = self.main_app.get_displayed_table()
+        fields = self.main_app.get_gui_definition()[table_name][1]
+        table_data = []  # setup empty list to fill
+
+        # iterate through all fields and retrieve the values
+        for field_name in fields.keys():
+            if field_name == 'ID':
+                # ID needs to be converted into int
+                try:
+                    value = int(self.main_app.get_field_of_current_widget(fields[field_name]))
+                except ValueError:
+                    # ID could not be converted
+                    if self.main_app.get_field_of_current_widget(fields[field_name]) == '':
+                        # if the ID is an empty string, it is OK to set in the table data
+                        value = self.main_app.get_field_of_current_widget(fields[field_name])
+                    else:
+                        # if the ID has any other value that can't be converted, the process needs to be stopped.
+                        self.main_app.send_critical_message('Fehler! ID konnte nicht verarbeitet werden!')
+                        return
+            else:
+                # if it's not an ID, just get the field value from the GUI
+                value = self.main_app.get_field_of_current_widget(fields[field_name])
+
+            table_data.append(value)  # add the value to the list
+
+        if self.main_app.ask_user_confirmation('Löschen', 'Möchten Sie den gewählten Eintrag wirklich löschen?'):
+            entry_id = self._delete_entry(table_name, table_data)  # delete the entry from the data table
+
+            # reset all fields to the initial values
+            for field_name in fields.keys():
+                self.main_app.set_field_in_current_widget(fields[field_name], '')  # set empty data
+
+            self._switch_main_widget()  # switch back to the main widget after saving is completed
+        else:
+            # do not delete the entry
+            pass
 
     def _get_data_of_tables(self, table_names: list) -> dict:
         """Retrieve all the data of the given list of table names.

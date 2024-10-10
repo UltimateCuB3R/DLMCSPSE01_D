@@ -239,8 +239,8 @@ class _DataTable:
 
         if not self.__check_columns(entry):  # check if the columns of the entry match the data table
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        elif self._definition.is_main_table():
-            # table is main table, so it has a column ID
+        elif self._definition.has_table_keys():
+            # table has column 'ID', so ID is the index
             if entry['ID'] in self._data.index:  # check if ID is in table
                 self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
             else:

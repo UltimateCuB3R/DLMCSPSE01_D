@@ -87,6 +87,8 @@ class _MainWindow(QMainWindow):
             button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogSaveButton')))
         elif 'revert' in button.objectName():
             button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_BrowserReload')))
+        elif 'delete' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogDiscardButton')))
 
     def switch_main_widget(self, name=None):
         """Switch the main widget to a table specific widget if given - else switch back to the initial main widget
@@ -313,6 +315,18 @@ class MainApplication(QApplication):
             if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
                 self._main_window.detail_widgets[table].pushButton_save.clicked.connect(action)
 
+    def connect_delete(self, tables, action):
+        """Connect the delete button of all table widgets to the corresponding method
+
+        :param tables: list of table names that correspond to widgets
+        :param action: method to be connected to the delete button
+        :return: None
+        """
+
+        for table in tables:  # iterate through all given tables
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
+                self._main_window.detail_widgets[table].pushButton_delete.clicked.connect(action)
+
     def enable_save_button(self, enabled):
         """Enable or disable the save button of the current widget
 
@@ -323,6 +337,17 @@ class MainApplication(QApplication):
         if not self.get_main_display():  # check if the main display is not active
             # enable the save button of the current widget
             self.get_current_widget().pushButton_save.setEnabled(enabled)
+
+    def enable_delete_button(self, enabled):
+        """Enable or disable the delete button of the current widget
+
+        :param enabled: state of the delete button
+        :return: None
+        """
+
+        if not self.get_main_display():  # check if the main display is not active
+            # enable the delete button of the current widget
+            self.get_current_widget().pushButton_delete.setEnabled(enabled)
 
     def _enable_global_buttons(self, enabled):
         """Enable or disable the global buttons
@@ -476,6 +501,23 @@ class MainApplication(QApplication):
         for table in tables:
             table_widget = self.get_main_left().findChild(QTableWidget, 'tableMain_' + table.lower())
             self._set_table_widget(table_widget, table_data[table], 2)
+            self._set_table_widget_selection(table_widget, [])
+
+    def ask_user_confirmation(self, title, message):
+        """Ask the user for confirmation of a message
+
+        :param title: header title of the dialog
+        :param message: text to be displayed
+        :return: True if answer_yes was chosen
+        """
+
+        answer = QMessageBox.question(self.get_current_widget(), title, message,
+                                      QMessageBox.Yes | QMessageBox.No)
+
+        if answer == QMessageBox.Yes:
+            return True
+        else:
+            return False
 
     def send_critical_message(self, message):
         """Send a critical message to the user and block the current widget until the message is confirmed
@@ -577,7 +619,11 @@ class MainApplication(QApplication):
                 # if the table widget name matches the given table name, the given table data can be set
                 try:
                     self._set_table_widget(table_widget, table_data)
-                    table_widget.setEnabled(editable)  # enable that the widget can be edited
+                    # table_widget.setEnabled(editable)  # enable that the widget can be edited
+                    if editable:
+                        table_widget.setSelectionMode(QAbstractItemView.MultiSelection)
+                    else:
+                        table_widget.setSelectionMode(QAbstractItemView.NoSelection)
                 except AttributeError:
                     # an error occurred when trying to set the table widget
                     self.send_critical_message('Fehler beim Setzen der Beziehungstabellen!')
