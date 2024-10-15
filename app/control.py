@@ -2,6 +2,7 @@ import data
 import view
 import error
 import os
+import xml.etree.ElementTree as ElTr
 
 NAME_SEARCH = 'search'
 NAME_PRINT = 'print'
@@ -253,6 +254,43 @@ class MainControl:
             # build the tree structure and set the tree widget with the selected data
             self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name),
                                                   self.data_con.get_table_columns(table_name), True)
+
+            self.main_app.set_html(self._create_html_from_data(self._get_data_top_down(table_name, [row['ID']])))
+
+    def _create_html_from_data(self, table_data):
+        """return_html = ElTr.Element('html')
+        body = ElTr.Element('body')
+        return_html.append(body)
+        for main_id, contents in table_data.items():
+            name = contents[0]  # object (table) name
+            item_data = contents[1]  # data contents of this item (columns)
+            children = contents[2]  # children of this item
+            div = ElTr.Element('div', attrib={'table': name + str(main_id)})
+            body.append(div)
+            return item_data.to_html(header=False, index=False)
+        ElTr.ElementTree(return_html).write('view/test.html', encoding='utf-8', method='html')"""
+        html = '<html>'
+        for main_id, contents in table_data.items():
+            name = contents[0]  # object (table) name
+            item_data = contents[1]  # data contents of this item (columns)
+            children = contents[2]  # children of this item
+            html += self._item_to_html(name, item_data, children)
+        html += '</html>'
+        return html
+
+    def _item_to_html(self, name, item_data, children):
+        html_table = '<table><tr>'
+        for column in self.data_con.get_table_columns(name):
+            html_table += f'<th>{column}</th>'
+        html_table += '</tr><tr>'
+        for value in item_data.to_list():
+            html_table += f'<td>{value}</td>'
+        html_table += '</tr></table></br>'
+        if children is not None:
+            for child in children:
+                for key, content in child.items():
+                    html_table += self._item_to_html(content[0], content[1], content[2])
+        return html_table
 
     def _button_print(self):
         """This action prints the currently displayed widget.

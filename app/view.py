@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 from PyQt5.QtPrintSupport import QPrinter  # QPrintDialog, QPrintPreviewDialog
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 import xml.etree.ElementTree as ElTr
 import error
 import sys
@@ -814,6 +815,16 @@ class MainApplication(QApplication):
 
         header_labels = ['Objekt', 'ID', '', '', '', '']
         self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6, False)
+
+    def set_html(self, html):
+        tree_widget = self.get_current_tree_widget()
+        self.get_current_widget().contentLayout.removeWidget(tree_widget)
+        tree_widget.hide()
+        html_view = QWebEngineView(self.get_current_widget())
+        self.get_current_widget().contentLayout.addWidget(html_view)
+        html_view.setHtml(html)
+        html_view.show()
+        pass
 
     def print_widget(self):
         """Print the current widget as a viewable file
