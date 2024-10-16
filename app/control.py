@@ -2,7 +2,7 @@ import data
 import view
 import error
 import os
-import xml.etree.ElementTree as ElTr
+from jinja2 import Environment, FileSystemLoader
 
 NAME_SEARCH = 'search'
 NAME_PRINT = 'print'
@@ -26,6 +26,7 @@ class MainControl:
         :param path: current path of the application
         """
 
+        self.app_path = path
         db_path = str(os.path.join(path, database))
         db_def_path = str(os.path.join(path, db_def))
         gui_def_path = str(os.path.join(path, gui_def))
@@ -59,7 +60,7 @@ class MainControl:
         # display, edit and export are only accessible from the search widget
         self.main_app.connect_display([NAME_SEARCH], self._button_display)
         self.main_app.connect_edit([NAME_SEARCH], self._button_edit)
-        self.main_app.connect_export([NAME_SEARCH], self._button_export)
+        self.main_app.connect_export([NAME_SEARCH], self._button_export)  # TODO: connect export button on main screen
         # print is only accessible from the export/print widget
         self.main_app.connect_print([NAME_PRINT], self._button_print)
 
@@ -255,42 +256,79 @@ class MainControl:
             self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name),
                                                   self.data_con.get_table_columns(table_name), True)
 
-            self.main_app.set_html(self._create_html_from_data(self._get_data_top_down(table_name, [row['ID']])))
+            if table_name == data.NAME_PLAN:
+                top_down_data = self._get_data_top_down(table_name, [row['ID']])
+                self.main_app.set_html(self._create_html_from_template(table_name, top_down_data))
 
-    def _create_html_from_data(self, table_data):
-        """return_html = ElTr.Element('html')
-        body = ElTr.Element('body')
-        return_html.append(body)
-        for main_id, contents in table_data.items():
-            name = contents[0]  # object (table) name
-            item_data = contents[1]  # data contents of this item (columns)
-            children = contents[2]  # children of this item
-            div = ElTr.Element('div', attrib={'table': name + str(main_id)})
-            body.append(div)
-            return item_data.to_html(header=False, index=False)
-        ElTr.ElementTree(return_html).write('view/test.html', encoding='utf-8', method='html')"""
-        html = '<html>'
-        for main_id, contents in table_data.items():
-            name = contents[0]  # object (table) name
-            item_data = contents[1]  # data contents of this item (columns)
-            children = contents[2]  # children of this item
-            html += self._item_to_html(name, item_data, children)
-        html += '</html>'
+    def _create_html_from_template(self, table_name, table_data):
+        env = Environment(loader=FileSystemLoader(str(os.path.join(self.app_path, 'templates'))))
+        template_file = table_name + '.jinja'
+        template = env.get_template(template_file.lower())
+        # plan_id, plan_name, plan_description, unit_data
+        # unit[ID, NAME, DESCRIPTION, DURATION, EXERCISE, CATEGORY]
+        # exercise[ID, NAME, DESCRIPTION, DURATION, URL, CATEGORY, RESOURCE]
+        split_data = self._split_data_for_html(table_data)
+        html = template.render(plan_id=split_data[0], plan_name=split_data[1], plan_description=split_data[2],
+                               unit_data=split_data[3], app_path=self.app_path)
+
         return html
 
-    def _item_to_html(self, name, item_data, children):
-        html_table = '<table><tr>'
-        for column in self.data_con.get_table_columns(name):
-            html_table += f'<th>{column}</th>'
-        html_table += '</tr><tr>'
-        for value in item_data.to_list():
-            html_table += f'<td>{value}</td>'
-        html_table += '</tr></table></br>'
-        if children is not None:
-            for child in children:
-                for key, content in child.items():
-                    html_table += self._item_to_html(content[0], content[1], content[2])
-        return html_table
+    @staticmethod
+    def _split_data_for_html(table_data):
+        return_data = []
+
+        for main_id, main_content in table_data.items():
+            table_name = main_content[0]  # object (table) name
+            if table_name == data.NAME_PLAN:
+                item_data = main_content[1]  # data contents of this item (columns)
+                return_data.append(item_data['ID'])  # plan_id - 0
+                return_data.append(item_data['NAME'])  # plan_name - 1
+                return_data.append(item_data['DESCRIPTION'].replace('\n', '<br />'))  # plan_description - 2
+                main_children = main_content[2]  # children of this item
+                unit_list = []
+                for c1 in main_children:
+                    for c1_id, c1_content in c1.items():
+                        c1_name = c1_content[0]
+                        c1_data = c1_content[1]
+                        c1_children = c1_content[2]
+                        if c1_name == data.NAME_UNIT:
+                            unit_data = {}
+                            unit_data['ID'] = c1_data['ID']
+                            unit_data['NAME'] = c1_data['NAME']
+                            unit_data['DESCRIPTION'] = c1_data['DESCRIPTION'].replace('\n', '<br />')
+                            unit_data['DURATION'] = c1_data['DURATION']
+                            unit_data['EXERCISE'] = []
+                            unit_data['CATEGORY'] = []
+                            for c2 in c1_children:
+                                for c2_id, c2_content in c2.items():
+                                    c2_name = c2_content[0]
+                                    c2_data = c2_content[1]
+                                    c2_children = c2_content[2]
+                                    if c2_name == data.NAME_EXERCISE:
+                                        exercise_data = {}
+                                        exercise_data['ID'] = c2_data['ID']
+                                        exercise_data['NAME'] = c2_data['NAME']
+                                        exercise_data['DESCRIPTION'] = c2_data['DESCRIPTION'].replace('\n', '<br />')
+                                        exercise_data['DURATION'] = c2_data['DURATION']
+                                        exercise_data['VIDEO_URL'] = c2_data['VIDEO_URL']
+                                        exercise_data['CATEGORY'] = []
+                                        exercise_data['RESOURCE'] = []
+                                        for c3 in c2_children:
+                                            for c3_id, c3_content in c3.items():
+                                                c3_name = c3_content[0]
+                                                c3_data = c3_content[1]
+                                                if c3_name == data.NAME_CATEGORY:
+                                                    exercise_data['CATEGORY'].append(c3_data['NAME'])
+                                                elif c3_name == data.NAME_RESOURCE:
+                                                    exercise_data['RESOURCE'].append(c3_data['NAME'])
+                                        unit_data['EXERCISE'].append(exercise_data)
+                                    elif c2_name == data.NAME_CATEGORY:
+                                        unit_data['CATEGORY'].append(c2_data['NAME'])
+
+                            unit_list.append(unit_data)
+                return_data.append(unit_list)  # unit_data - 3
+
+        return return_data
 
     def _button_print(self):
         """This action prints the currently displayed widget.
@@ -298,7 +336,10 @@ class MainControl:
         :return: None
         """
 
-        self.main_app.print_widget()  # call the print dialog
+        if self.main_app.get_displayed_table() == data.NAME_PLAN:
+            self.main_app.print_widget_pdf()  # call the print dialog to pdf via html
+        else:
+            self.main_app.print_widget_jpg()  # call the print dialog to jpg
         self._switch_main_widget()  # switch back to the main widget
 
     def _button_search(self, button_name):
@@ -354,8 +395,6 @@ class MainControl:
             fields = self.main_app.get_gui_definition()[table_name][1]  # fields of the GUI definition of this table
             for field in fields.keys():  # iterate through all fields
                 self.main_app.set_field_in_current_widget(fields[field], '')  # set empty data
-
-            # TODO: cancel tableWidget selections
 
         self._switch_main_widget()  # switch back to the main widget
 

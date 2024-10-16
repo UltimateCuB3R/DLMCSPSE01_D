@@ -167,6 +167,7 @@ class MainApplication(QApplication):
         self._main_window.show()  # show the main window and all its content
         self._gui_def = _read_gui_definition(gui_def)  # read the GUI definition from the xml file
         self.setStyle('Fusion')  # different style for better readability
+        self._html = ''
 
     def _set_field_editable(self, field_name, editable):
         """Set a given field to be editable or not
@@ -817,19 +818,22 @@ class MainApplication(QApplication):
         self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6, False)
 
     def set_html(self, html):
-        tree_widget = self.get_current_tree_widget()
-        self.get_current_widget().contentLayout.removeWidget(tree_widget)
-        tree_widget.hide()
+        self._html = html
+        old_view = self.get_current_widget().findChild(QWebEngineView)
+        if old_view is not None:
+            self.get_current_widget().contentLayout.removeWidget(old_view)
+            old_view.hide()
+            old_view.deleteLater()
+        self.get_current_tree_widget().hide()
         html_view = QWebEngineView(self.get_current_widget())
         self.get_current_widget().contentLayout.addWidget(html_view)
         html_view.setHtml(html)
         html_view.show()
-        pass
 
-    def print_widget(self):
-        """Print the current widget as a viewable file
+    def print_widget_pdf(self):
+        """Print the QWebEngineView as a pdf file
 
-        :return: None
+        :return: True if the print dialog was successful, False if not
         """
 
         filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None,
@@ -837,12 +841,26 @@ class MainApplication(QApplication):
         if filename != '':
             if QFileInfo(filename).suffix() == '':
                 filename += '.pdf'
+            html_view = self.get_current_widget().findChild(QWebEngineView)
+            html_view.page().printToPdf(filename)
+            return True
+        return False
+
+    def print_widget_jpg(self):
+        """Print the current widget as a jpg file
+
+        :return: None
+        """
+
+        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export JPG', None,
+                                                  'JPG files (.jpg);;All Files()')
+        if filename != '':
+            if QFileInfo(filename).suffix() == '':
+                filename += '.jpg'
             printer = QPrinter(QPrinter.HighResolution)
             printer.setOutputFormat(QPrinter.PdfFormat)
             printer.setOutputFileName(filename)
-            # self.get_current_widget().document().print_(printer)
-            self.primaryScreen().grabWindow(self.get_current_tree_widget().winId()).save(f'{filename}.jpg', 'jpg')
-            # self.get_current_widget().render(QPainter(printer))
+            self.primaryScreen().grabWindow(self.get_current_tree_widget().winId()).save(filename, 'jpg')
 
     def start_application(self):
         """Start the application
