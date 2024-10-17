@@ -1,37 +1,63 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <!--Import materialize.css-->
-        <link type="text/css" rel="stylesheet" href="{{app_path}}\static\materialize.min.css"/>
-        <title>Trainingsplan</title>
+        <!-- Compiled and minified CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <!--<link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">-->
         <style>
             p {
-                margin: 8px 16px;
-                background-color: aquamarine;
-                padding: 12px 24px;
-                border: 1px solid black;
-                border-radius: 4px;
+                font-size: 16px;
+                margin-left: 40px;
+            }
+            a {
+                font-size: 16px;
+                margin-left: 40px;
+            }
+            h1 { font-size: 40px; }
+            h2 { font-size: 35px; }
+            h3 { font-size: 30px; margin-left: 10px; }
+            h4 { font-size: 25px; margin-left: 20px;}
+            h5 { font-size: 20px; margin-left: 30px;}
+            div {
+                margin-top: 10px;
+                margin-bottom: 10px;
+                margin-right: 10px;
+                margin-left: 10px;
             }
         </style>
+        <title>Trainingsplan</title>
     </head>
     <body>
-        <h1>Plan {{plan_id}}: {{plan_name|e}}</h1>
-        <p class="flow-text">Beschreibung: {{plan_description}}</p>
-        <h2>Einheiten:</h2>
-        {% for unit in unit_data -%}
-        <h3>Einheit {{unit['ID']}}: {{unit['NAME']|e}} ({{unit['DURATION']}})</h3>
-        <p>Kategorien: {{unit['CATEGORY']}}</p>
-        <p class="flow-text">{{unit['DESCRIPTION']}}</p>
-        {% for exercise in unit['EXERCISE'] -%}
-        <h4>Übung {{exercise['ID']}}: {{exercise['NAME']|e}} ({{exercise['DURATION']}})</h4>
-        <p>Kategorien: {{exercise['CATEGORY']|e}}</p>
-        <p class="flow-text">{{exercise['DESCRIPTION']}}</p>
-        <a href={{exercise['URL']}} target="_blank">{{exercise['VIDEO_URL']}}</a><br>
-        <p>Ressourcen: {{exercise['RESOURCE']|e}}</p>
-        {%- endfor %}
-        {%- endfor %}
-
-        <!--JavaScript at end of body for optimized loading-->
-        <script type="text/javascript" src="{{app_path}}\static\materialize.min.js"></script>
+        <div>
+            <h1>Trainingsplan</h1>
+            <h2>Plan {{plan_id}}: {{plan_name|e}}</h2>
+            <p class="description">
+                Beschreibung:
+                {% for line in plan_description -%}
+                {{line|e}}<br />
+                {%- endfor %}
+            </p>
+            <h3>Einheiten:</h3>
+            {% for unit in unit_data -%}
+                <h4>Einheit {{unit['ID']}}: {{unit['NAME']|e}} ({{unit['DURATION']}})</h4>
+                <p>Kategorien: {{unit['CATEGORY']}}</p>
+                <p class="description">
+                    {% for line in unit['DESCRIPTION'] -%}
+                    {{line|e}}<br />
+                    {%- endfor %}
+                </p>
+                {% for exercise in unit['EXERCISE'] -%}
+                    <h5>Übung {{exercise['ID']}}: {{exercise['NAME']|e}} ({{exercise['DURATION']}})</h5>
+                    <p>Kategorien: {{exercise['CATEGORY']|e}}</p>
+                    <p class="description">
+                        {% for line in exercise['DESCRIPTION'] -%}
+                        {{line|e}}<br />
+                        {%- endfor %}
+                    </p>
+                    <a href={{exercise['URL']}} target="_blank">{{exercise['VIDEO_URL']}}</a><br>
+                    <p>Ressourcen: {{exercise['RESOURCE']|e}}</p>
+                {%- endfor %}
+            {%- endfor %}
+        </div>
     </body>
 </html>

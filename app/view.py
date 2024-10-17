@@ -664,6 +664,14 @@ class MainApplication(QApplication):
 
         self._set_table_widget(table_widget, table_data)  # set the table widget to the given data
         self._set_table_widget_selection(table_widget, [])  # clear the table widget selection
+        self.set_label_table_name(table_name)  # set the table name
+
+    def set_label_table_name(self, table_name):
+        """TODO
+
+        :param table_name:
+        :return:
+        """
         self.get_current_widget().label_table_name.setText(table_name)  # set the table name
 
     def get_item_of_table_widget(self, widget_name, row, column) -> str:

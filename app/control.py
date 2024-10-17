@@ -249,6 +249,7 @@ class MainControl:
             self.main_app.send_critical_message('Fehler! Zu viele Zeilen ausgewählt! Bitte genau eine Zeile auswählen!')
         else:
             self._switch_main_widget(NAME_PRINT)  # switch to export widget
+            self.main_app.set_label_table_name(table_name)  # set the table name
             # get row data corresponding to chosen row
             table_data = self.data_con.get_table_content(table_name)
             row = table_data.iloc[table_rows[0]]
@@ -283,7 +284,7 @@ class MainControl:
                 item_data = main_content[1]  # data contents of this item (columns)
                 return_data.append(item_data['ID'])  # plan_id - 0
                 return_data.append(item_data['NAME'])  # plan_name - 1
-                return_data.append(item_data['DESCRIPTION'].replace('\n', '<br />'))  # plan_description - 2
+                return_data.append(item_data['DESCRIPTION'].split('\n'))  # plan_description - 2
                 main_children = main_content[2]  # children of this item
                 unit_list = []
                 for c1 in main_children:
@@ -295,7 +296,7 @@ class MainControl:
                             unit_data = {}
                             unit_data['ID'] = c1_data['ID']
                             unit_data['NAME'] = c1_data['NAME']
-                            unit_data['DESCRIPTION'] = c1_data['DESCRIPTION'].replace('\n', '<br />')
+                            unit_data['DESCRIPTION'] = c1_data['DESCRIPTION'].split('\n')
                             unit_data['DURATION'] = c1_data['DURATION']
                             unit_data['EXERCISE'] = []
                             unit_data['CATEGORY'] = []
@@ -308,7 +309,7 @@ class MainControl:
                                         exercise_data = {}
                                         exercise_data['ID'] = c2_data['ID']
                                         exercise_data['NAME'] = c2_data['NAME']
-                                        exercise_data['DESCRIPTION'] = c2_data['DESCRIPTION'].replace('\n', '<br />')
+                                        exercise_data['DESCRIPTION'] = c2_data['DESCRIPTION'].split('\n')
                                         exercise_data['DURATION'] = c2_data['DURATION']
                                         exercise_data['VIDEO_URL'] = c2_data['VIDEO_URL']
                                         exercise_data['CATEGORY'] = []
