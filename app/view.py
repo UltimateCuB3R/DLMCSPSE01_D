@@ -248,7 +248,13 @@ class MainApplication(QApplication):
 
         for table in tables:  # iterate through all given table
             if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
-                self._main_window.detail_widgets[table].pushButton_export.clicked.connect(action)
+                self._main_window.detail_widgets[table].pushButton_export.clicked.connect(
+                    self._make_widget_action(action, table))
+
+        for button in self._main_window.main_left.findChildren(QPushButton):
+            if 'export' in button.objectName():
+                table = button.objectName().split('_')[1]
+                button.clicked.connect(self._make_widget_action(action, table))
 
     def connect_print(self, tables, action):
         """Connect the print button of all specified widgets to the corresponding method

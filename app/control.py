@@ -231,14 +231,17 @@ class MainControl:
 
         self.__show_widget(table_name, table_rows, True)  # show the widget in edit mode
 
-    def _button_export(self):
+    def _button_export(self, table_name):
         """This action calls the print widget of the chosen table with the selected entry.
-
+            TODO table_name
         :return: None
         """
-
-        table_name = self.main_app.get_displayed_table()  # get current table
-        table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
+        if self.main_app.get_main_display():
+            # main screen is displayed, so get table rows from corresponding table
+            table_rows = self.main_app.get_selected_rows_of_widget('tableMain_'+table_name)  # get selection
+        else:
+            # search screen is displayed, so get table rows from current widget
+            table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
 
         # check if only one row was selected
         if len(table_rows) == 0:
@@ -251,14 +254,14 @@ class MainControl:
             self._switch_main_widget(NAME_PRINT)  # switch to export widget
             self.main_app.set_label_table_name(table_name)  # set the table name
             # get row data corresponding to chosen row
-            table_data = self.data_con.get_table_content(table_name)
+            table_data = self.data_con.get_table_content(table_name.upper())
             row = table_data.iloc[table_rows[0]]
             # build the tree structure and set the tree widget with the selected data
-            self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name),
-                                                  self.data_con.get_table_columns(table_name), True)
+            self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name.upper()),
+                                                  self.data_con.get_table_columns(table_name.upper()), True)
 
-            if table_name == data.NAME_PLAN:
-                top_down_data = self._get_data_top_down(table_name, [row['ID']])
+            if table_name.upper() == data.NAME_PLAN:
+                top_down_data = self._get_data_top_down(table_name.upper(), [row['ID']])
                 self.main_app.set_html(self._create_html_from_template(table_name, top_down_data))
 
     def _create_html_from_template(self, table_name, table_data):
