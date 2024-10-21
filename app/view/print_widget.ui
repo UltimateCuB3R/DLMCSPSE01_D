@@ -15,7 +15,10 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout_top">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetDefaultConstraint</enum>
+     </property>
      <item>
       <widget class="QLabel" name="label_top">
        <property name="font">
@@ -45,6 +48,9 @@
    </item>
    <item>
     <layout class="QHBoxLayout" name="contentLayout">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetDefaultConstraint</enum>
+     </property>
      <item>
       <widget class="QTreeWidget" name="treeWidget">
        <property name="font">
@@ -65,7 +71,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
+    <layout class="QHBoxLayout" name="horizontalLayout_bot">
      <item>
       <widget class="QPushButton" name="pushButton_print">
        <property name="font">

@@ -60,7 +60,7 @@ class MainControl:
         # display, edit and export are only accessible from the search widget
         self.main_app.connect_display([NAME_SEARCH], self._button_display)
         self.main_app.connect_edit([NAME_SEARCH], self._button_edit)
-        self.main_app.connect_export([NAME_SEARCH], self._button_export)  # TODO: connect export button on main screen
+        self.main_app.connect_export([NAME_SEARCH], self._button_export)
         # print is only accessible from the export/print widget
         self.main_app.connect_print([NAME_PRINT], self._button_print)
 
@@ -147,8 +147,6 @@ class MainControl:
         :param edit_mode: True if data should be editable and save button enabled.
         :return: None
         """
-        # table_name = self.main_app.get_displayed_table()  # get current table
-        # table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
 
         # check if only one row was selected
         if len(table_rows) == 0:
@@ -176,15 +174,17 @@ class MainControl:
         :return: None
         """
 
-        if self.main_app.get_main_display() or 'search' in widget_name:  # check if main display is active
-            if 'search' in widget_name:
+        if self.main_app.get_main_display() or NAME_SEARCH in widget_name:  # check if main display is active
+            if NAME_SEARCH in widget_name:  # search table was clicked
                 table_name = self.main_app.get_displayed_table()
-            else:
+            else:  # main table was clicked
+                # table name is found in the widget name
                 table_name = widget_name.split('_')[1].upper()
+
             table_rows = self.main_app.get_selected_rows_of_widget(widget_name)  # get selection
             self.__show_widget(table_name, table_rows, False)  # show the widget in display mode
         else:
-            # if main display is not active, creation process cannot be started
+            # function cannot be called here
             self.main_app.send_critical_message('Fehler! Funktion kann hier nicht ausgeführt werden!')
 
     def _button_create(self, button_name):
@@ -233,15 +233,18 @@ class MainControl:
 
     def _button_export(self, table_name):
         """This action calls the print widget of the chosen table with the selected entry.
-            TODO table_name
+
+        :param table_name: name of the chosen table
         :return: None
         """
         if self.main_app.get_main_display():
             # main screen is displayed, so get table rows from corresponding table
-            table_rows = self.main_app.get_selected_rows_of_widget('tableMain_'+table_name)  # get selection
+            table_rows = self.main_app.get_selected_rows_of_widget('tableMain_' + table_name)  # get selection
+            table_name = table_name.upper()
         else:
             # search screen is displayed, so get table rows from current widget
             table_rows = list(self.main_app.get_selected_rows_of_current_widget().values())[0]  # get selection
+            table_name = self.main_app.get_displayed_table()
 
         # check if only one row was selected
         if len(table_rows) == 0:
@@ -254,43 +257,70 @@ class MainControl:
             self._switch_main_widget(NAME_PRINT)  # switch to export widget
             self.main_app.set_label_table_name(table_name)  # set the table name
             # get row data corresponding to chosen row
-            table_data = self.data_con.get_table_content(table_name.upper())
+            table_data = self.data_con.get_table_content(table_name)
             row = table_data.iloc[table_rows[0]]
             # build the tree structure and set the tree widget with the selected data
-            self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name.upper()),
-                                                  self.data_con.get_table_columns(table_name.upper()), True)
+            self.main_app.set_current_tree_widget(self._get_tree_structure(main_id=row['ID'], table=table_name),
+                                                  self.data_con.get_table_columns(table_name), True)
 
-            if table_name.upper() == data.NAME_PLAN:
-                top_down_data = self._get_data_top_down(table_name.upper(), [row['ID']])
-                self.main_app.set_html(self._create_html_from_template(table_name, top_down_data))
+            #  build the html view or show the tree widget again
+            if table_name == data.NAME_PLAN:
+                # retrieve the top-down data to create the html view
+                top_down_data = self.data_con.get_data_top_down(table_name, [row['ID']])
+                # create the html code from the data and set it in the application
+                self.main_app.set_html_view(self._create_html_from_template(table_name, top_down_data))
+            else:
+                self.main_app.clear_html_view()
+                self.main_app.get_current_tree_widget().show()  # tree widget was hidden if html view was active before
 
     def _create_html_from_template(self, table_name, table_data):
+        """Create html code from a jinja template.
+        The given data is parsed and then used in the template.
+
+        :param table_name: name of the table
+        :param table_data: all data to be displayed
+        :return: html code as string
+        """
+
+        # create a jinja environment to load the template file
         env = Environment(loader=FileSystemLoader(str(os.path.join(self.app_path, 'templates'))))
         template_file = table_name + '.jinja'
+        # load the template file
         template = env.get_template(template_file.lower())
+
+        # parse the table_data into the needed split_data for the jinja template
+        split_data = self._split_data_for_html(table_data)
+        # table_data is now split into:
         # plan_id, plan_name, plan_description, unit_data
         # unit[ID, NAME, DESCRIPTION, DURATION, EXERCISE, CATEGORY]
         # exercise[ID, NAME, DESCRIPTION, DURATION, URL, CATEGORY, RESOURCE]
-        split_data = self._split_data_for_html(table_data)
-        html = template.render(plan_id=split_data[0], plan_name=split_data[1], plan_description=split_data[2],
-                               unit_data=split_data[3], app_path=self.app_path)
+
+        # render the html template with the given data
+        html = template.render(plan_name=split_data[1], plan_description=split_data[2], unit_data=split_data[3])
 
         return html
 
     @staticmethod
     def _split_data_for_html(table_data):
+        """Parse the given data that comes from _get_data_top_down into the needed format for html rendering.
+        Each table has to have its own implementation.
+
+        :param table_data: top-down data of the table
+        :return: list of values
+        """
         return_data = []
 
         for main_id, main_content in table_data.items():
             table_name = main_content[0]  # object (table) name
-            if table_name == data.NAME_PLAN:
+            if table_name == data.NAME_PLAN:  # only parse the data for PLAN
                 item_data = main_content[1]  # data contents of this item (columns)
                 return_data.append(item_data['ID'])  # plan_id - 0
                 return_data.append(item_data['NAME'])  # plan_name - 1
                 return_data.append(item_data['DESCRIPTION'].split('\n'))  # plan_description - 2
                 main_children = main_content[2]  # children of this item
                 unit_list = []
-                for c1 in main_children:
+
+                for c1 in main_children:  # iterate through all children (UNIT)
                     for c1_id, c1_content in c1.items():
                         c1_name = c1_content[0]
                         c1_data = c1_content[1]
@@ -303,7 +333,8 @@ class MainControl:
                             unit_data['DURATION'] = c1_data['DURATION']
                             unit_data['EXERCISE'] = []
                             unit_data['CATEGORY'] = []
-                            for c2 in c1_children:
+
+                            for c2 in c1_children:  # iterate through all children (EXERCISE, CATEGORY)
                                 for c2_id, c2_content in c2.items():
                                     c2_name = c2_content[0]
                                     c2_data = c2_content[1]
@@ -317,7 +348,8 @@ class MainControl:
                                         exercise_data['VIDEO_URL'] = c2_data['VIDEO_URL']
                                         exercise_data['CATEGORY'] = []
                                         exercise_data['RESOURCE'] = []
-                                        for c3 in c2_children:
+
+                                        for c3 in c2_children:  # iterate through all children (CATEGORY, RESOURCE)
                                             for c3_id, c3_content in c3.items():
                                                 c3_name = c3_content[0]
                                                 c3_data = c3_content[1]
@@ -336,6 +368,7 @@ class MainControl:
 
     def _button_print(self):
         """This action prints the currently displayed widget.
+        Regarding the displayed table, the widget is either printed as pdf (from html) or as jpg (from screenshot).
 
         :return: None
         """
@@ -358,7 +391,7 @@ class MainControl:
             # search can only be accessed via the main widget
             # table_name = self.main_app.get_main_left().comboBox_tables.currentText()  # get chosen table name
             table_name = button_name.split('_')[1].upper()
-            self._switch_main_widget('search')  # switch to search widget
+            self._switch_main_widget(NAME_SEARCH)  # switch to search widget
             # set up the search table with the right data
             self.main_app.set_search_table(table_name, self.data_con.get_table_content(table_name))
             # set up the tree widget in the search table with the tree structure
@@ -530,6 +563,9 @@ class MainControl:
                 self.main_app.set_field_in_current_widget(fields[field_name], '')  # set empty data
 
             self._switch_main_widget()  # switch back to the main widget after saving is completed
+
+            # send information about deleted entry to user
+            self.main_app.send_information_message(f'ID {entry_id} aus Tabelle {table_name} erfolgreich gelöscht!')
         else:
             # do not delete the entry
             pass
@@ -550,83 +586,6 @@ class MainControl:
             return_data[table] = table_data
 
         return return_data
-
-    def _get_data_top_down(self, main_table_name: str, main_table_id: list, table_blacklist=None) -> dict:
-        """Retrieve all the data of a table from top down according to the relations.
-        All table data will be stored in a dictionary that is returned.
-
-        :param main_table_name: name of the main table to start the data selection
-        :param main_table_id: list of IDs of the main table that shall be selected
-        :param table_blacklist: blacklist of table names that should not be processed (needed for recursion)
-        :return: dictionary of table names and corresponding table data according to the selected main IDs
-        """
-
-        # create blacklist if not given - the blacklisted tables should not be processed anymore
-        if table_blacklist is None:
-            table_blacklist = []
-
-        return_table = {}  # create empty dict to return at the end
-
-        if main_table_name in table_blacklist:
-            return return_table  # stop processing if main table is in blacklist
-
-        # retrieve main table data and insert into dict
-        main_table_data = self.data_con.lookup_entry_in_table(main_table_name, 'ID', main_table_id)
-
-        table_blacklist.append(main_table_name)  # main table should not be processed another time
-
-        children = {}  # create empty dict for the children
-
-        if not self.data_con.is_sub_table(main_table_name):  # don't process children if it is a subordinate table
-            # setup children dict
-            for main_id in main_table_id:
-                children[main_id] = []
-
-            # retrieve main table relations and process children
-            main_table_relations = self.data_con.get_table_relations(main_table_name)
-            for rel_table_name, rel_key_name in main_table_relations.items():
-                if rel_table_name in table_blacklist:
-                    continue  # stop processing this table as it has already been processed
-                if not self.data_con.is_top_table(rel_table_name, main_table_name):
-                    continue  # stop processing this relation table if the current main table is not the top table of it
-
-                # lookup the relation table entries for the given main IDs
-                relation_table = self.data_con.lookup_table_by_relation(main_table_id, main_table_name, rel_table_name)
-
-                table_blacklist.append(rel_table_name)  # relation table should not be processed in the next object
-
-                # retrieve column relations and recursively retrieve the data below
-                column_relations = self.data_con.get_column_relations(rel_table_name)
-                for column, sub_table in column_relations.items():
-                    if column == rel_key_name or sub_table in table_blacklist:
-                        continue  # the main key should not be processed, also if the table is in the blacklist
-                    else:
-                        # recursively retrieve the tables below the current table
-                        sub_data = self._get_data_top_down(sub_table, relation_table[column].to_list(), table_blacklist)
-                        for main_id in main_table_id:
-                            selected_relation_data = relation_table.loc[
-                                relation_table[self.data_con.get_top_table_key(rel_table_name)] == main_id]
-
-                            # insert the children into the dict corresponding to the main id
-                            for key, row in selected_relation_data.iterrows():
-                                child = {row[column]: sub_data[row[column]]}
-                                if len(children[main_id]) == 0:
-                                    children[main_id] = [child]
-                                else:
-                                    children[main_id].append(child)
-
-        # build the final dict entry to return that contains the children if there are any
-        for main_id in main_table_id:
-            # iloc[0] is necessary here as a Series object needs to be retrieved, not Dataframe
-            selected_main_data = main_table_data.loc[main_table_data['ID'] == main_id].iloc[0]
-            if len(children.keys()) > 0:
-                # children exist
-                return_table[main_id] = [main_table_name, selected_main_data, children[main_id]]
-            else:
-                # no children
-                return_table[main_id] = [main_table_name, selected_main_data, None]
-
-        return return_table
 
     def _get_tree_structure(self, main_id=None, table=None) -> list:
         """Retrieve the tree structure of the data of one or all tables and one or all IDs of a table.
@@ -653,10 +612,10 @@ class MainControl:
             if main_id is None:
                 # no ID is given, so all entries of this table should be retrieved
                 table_data = self.data_con.get_table_content(table)
-                all_data = self._get_data_top_down(table, table_data['ID'].to_list())
+                all_data = self.data_con.get_data_top_down(table, table_data['ID'].to_list())
             else:
                 # ID is given, so only the related entries should be retrieved
-                all_data = self._get_data_top_down(table, [main_id])
+                all_data = self.data_con.get_data_top_down(table, [main_id])
 
             main_items = []
             # build a main item for each retrieved main entry of this table

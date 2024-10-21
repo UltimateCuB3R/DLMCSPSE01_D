@@ -1,4 +1,4 @@
-from PyQt5.QtGui import *
+# from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
@@ -151,6 +151,7 @@ class MainApplication(QApplication):
 
     _main_window: _MainWindow
     _gui_def: dict[str, list]
+    _translation: dict
 
     def __init__(self, tables, gui_def, path, *args, **kwargs):
         """Initialize the MainApplication and set the main window
@@ -166,8 +167,8 @@ class MainApplication(QApplication):
         self._main_window = _MainWindow(tables, path)  # create the main window
         self._main_window.show()  # show the main window and all its content
         self._gui_def = _read_gui_definition(gui_def)  # read the GUI definition from the xml file
+        self._translation = _read_translations(os.path.join(path, 'view/dictionary_de.txt'))
         self.setStyle('Fusion')  # different style for better readability
-        self._html = ''
 
     def _set_field_editable(self, field_name, editable):
         """Set a given field to be editable or not
@@ -182,6 +183,11 @@ class MainApplication(QApplication):
         field.setReadOnly(not editable)
 
     def connect_table_click(self, action):
+        """Connect the double click on a table to the corresponding method
+
+        :param action: method to be connected to double-clicking a table
+        :return: None
+        """
         table_widgets = self.get_main_left().findChildren(QTableWidget)
         for widget in table_widgets:
             widget_clicked = widget.objectName()
@@ -208,7 +214,14 @@ class MainApplication(QApplication):
 
     @staticmethod
     def _make_widget_action(action, name):
-        # function factory to give the widget name into the given function
+        """Function factory to give the widget name into the given function
+
+        :param action: function to be called
+        :param name: parameter to be given to the called function
+        :return: a function that is called with the given parameter
+        """
+
+        #
         def widget_action():
             action(name)
 
@@ -545,8 +558,7 @@ class MainApplication(QApplication):
 
         QMessageBox.information(self.get_current_widget(), 'INFORMATION', message)
 
-    @staticmethod
-    def _set_table_widget(table_widget, table_data, max_columns=0):
+    def _set_table_widget(self, table_widget, table_data, max_columns=0):
         """Set the contents of the table widget to the given table data
 
         :param table_widget: QTableWidget object
@@ -561,14 +573,10 @@ class MainApplication(QApplication):
         else:
             table_widget.setColumnCount(max_columns)
 
-        table_widget.setHorizontalHeaderLabels(table_data.columns.to_list())
-        """index = 0
-        for column in table_data.columns.to_list():
-            header_item = QTableWidgetItem(column)
-            header_item.setBackground(QColor(211, 211, 211))
-            table_widget.setHorizontalHeaderItem(index, header_item)
-            index += 1
-        """
+        header_list = []
+        for header_text in table_data.columns.to_list():
+            header_list.append(self.translate_text(header_text))
+        table_widget.setHorizontalHeaderLabels(header_list)
 
         index = 0
         for key, row in table_data.iterrows():  # iterate through the given data
@@ -673,10 +681,10 @@ class MainApplication(QApplication):
         self.set_label_table_name(table_name)  # set the table name
 
     def set_label_table_name(self, table_name):
-        """TODO
+        """Set the label_table_name to the given name.
 
-        :param table_name:
-        :return:
+        :param table_name: name of the table
+        :return: None
         """
         self.get_current_widget().label_table_name.setText(table_name)  # set the table name
 
@@ -810,7 +818,9 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        header_labels = ['Objekt'] + header
+        header_labels = ['Objekt']
+        for header_text in header:
+            header_labels.append(self.translate_text(header_text))
         self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6, expand_all)
 
     def get_current_tree_widget(self):
@@ -831,18 +841,40 @@ class MainApplication(QApplication):
         header_labels = ['Objekt', 'ID', '', '', '', '']
         self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6, False)
 
-    def set_html(self, html):
-        self._html = html
+    def set_html_view(self, html):
+        """Create a new html view, set the given html and display it.
+
+        :param html: String of html code to be displayed.
+        :return: None
+        """
+
+        self.clear_html_view()  # find the previous view and clear it
+
+        # hide the tree widget to display the new html view
+        self.get_current_tree_widget().hide()
+        html_view = QWebEngineView(self.get_current_widget())
+        html_view.setMinimumHeight(800)
+        self.get_current_widget().contentLayout.addWidget(html_view)
+
+        html_view.setHtml(html)
+        html_view.show()
+
+    def clear_html_view(self):
+        """Clear the html view if possible.
+
+        :return: True if a html view was found and removed, False if nothing was found.
+        """
+
+        # find the html view and destroy it
         old_view = self.get_current_widget().findChild(QWebEngineView)
         if old_view is not None:
             self.get_current_widget().contentLayout.removeWidget(old_view)
             old_view.hide()
             old_view.deleteLater()
-        self.get_current_tree_widget().hide()
-        html_view = QWebEngineView(self.get_current_widget())
-        self.get_current_widget().contentLayout.addWidget(html_view)
-        html_view.setHtml(html)
-        html_view.show()
+            return True
+
+        # no view was found
+        return False
 
     def print_widget_pdf(self):
         """Print the QWebEngineView as a pdf file
@@ -851,7 +883,7 @@ class MainApplication(QApplication):
         """
 
         filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None,
-                                                  'PDF files (.pdf);;All Files()')
+                                                  'PDF files (.pdf);All Files()')
         if filename != '':
             if QFileInfo(filename).suffix() == '':
                 filename += '.pdf'
@@ -867,7 +899,7 @@ class MainApplication(QApplication):
         """
 
         filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export JPG', None,
-                                                  'JPG files (.jpg);;All Files()')
+                                                  'JPG files (.jpg);All Files()')
         if filename != '':
             if QFileInfo(filename).suffix() == '':
                 filename += '.jpg'
@@ -875,6 +907,17 @@ class MainApplication(QApplication):
             printer.setOutputFormat(QPrinter.PdfFormat)
             printer.setOutputFileName(filename)
             self.primaryScreen().grabWindow(self.get_current_tree_widget().winId()).save(filename, 'jpg')
+
+    def translate_text(self, input_text) -> str:
+        """Translate a given text according to the stored translations
+
+        :param input_text: text to be translated
+        :return: translated text or input text if no translation was found
+        """
+        if input_text in self._translation.keys():
+            return self._translation[input_text]
+        else:
+            return input_text
 
     def start_application(self):
         """Start the application
@@ -918,3 +961,18 @@ def _read_gui_definition(gui_def) -> dict:
         def_gui[table] = [name, fields, tables]
 
     return def_gui
+
+
+def _read_translations(translation_file) -> dict:
+    """Read the translations from the given file into a translation dictionary.
+    The assignments in the file need to be separated by '='
+
+    :param translation_file: file that stores the translations
+    :return: dictionary of the translation assignments
+    """
+
+    translation_dict = {}
+    for line in open(translation_file).readlines():
+        line_data = line.split('=')
+        translation_dict[line_data[0]] = line_data[1]
+    return translation_dict
