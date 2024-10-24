@@ -19,15 +19,35 @@
      <layout class="QHBoxLayout" name="horizontalLayout_top">
       <item>
        <widget class="QPushButton" name="pushButton_revert_db">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Änderungen verwerfen&lt;/p&gt;&lt;p&gt;Datenbank auf den letzten gesicherten Stand zurücksetzen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
-         <string>Änderungen verwerfen - Datenbankinhalte neu laden</string>
+         <string>Änderungen verwerfen</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="pushButton_save_db">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="toolTip">
+         <string>Änderungen auf der Datenbank sichern</string>
+        </property>
         <property name="text">
-         <string>Änderungen auf Datenbank sichern</string>
+         <string>Änderungen sichern</string>
         </property>
        </widget>
       </item>
@@ -37,24 +57,6 @@
      <layout class="QHBoxLayout" name="horizontalLayout_main_widget"/>
     </item>
    </layout>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1062</width>
-     <height>26</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menuMenu">
-    <property name="title">
-     <string>Menü</string>
-    </property>
-    <addaction name="actionStart"/>
-    <addaction name="actionSettings"/>
-   </widget>
-   <addaction name="menuMenu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionMain">

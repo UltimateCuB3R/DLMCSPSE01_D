@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            p { font-family: Arial; font-size: 16px; margin-left: 40px; }
+            a { font-family: Arial; font-size: 16px; margin-left: 40px; }
+            h1 { font-family: Arial; font-size: 40px; }
+            h2 { font-family: Arial; font-size: 35px; }
+            h3 { font-family: Arial; font-size: 30px; margin-left: 10px; }
+            h4 { font-family: Arial; font-size: 25px; margin-left: 20px;}
+            h5 { font-family: Arial; font-size: 20px; margin-left: 30px;}
+            div { margin-top: 10px; margin-bottom: 10px; margin-right: 10px; margin-left: 10px; }
+        </style>
+        <title>Trainingsplan</title>
+    </head>
+    <body>
+        <div>
+            <h1>Trainingsplan</h1>
+            <h2>Plan: {{plan_name|e}}</h2>
+            <p class="description">
+                Beschreibung:
+                {% for line in plan_description -%}
+                {{line|e}}<br />
+                {%- endfor %}
+            </p>
+            <h3>Einheiten:</h3>
+            {% for unit in unit_data -%}
+                <h4>Einheit: {{unit['NAME']|e}} ({{unit['DURATION']}})</h4>
+                <p>Kategorien: {{unit['CATEGORY']}}</p>
+                <p class="description">
+                    {% for line in unit['DESCRIPTION'] -%}
+                    {{line|e}}<br />
+                    {%- endfor %}
+                </p>
+                {% for exercise in unit['EXERCISE'] -%}
+                    <h5>Übung: {{exercise['NAME']|e}} ({{exercise['DURATION']}})</h5>
+                    <p>Kategorien: {{exercise['CATEGORY']|e}}</p>
+                    <p class="description">
+                        {% for line in exercise['DESCRIPTION'] -%}
+                        {{line|e}}<br />
+                        {%- endfor %}
+                    </p>
+                    <a href={{exercise['URL']}} target="_blank">{{exercise['VIDEO_URL']}}</a><br>
+                    <p>Ressourcen: {{exercise['RESOURCE']|e}}</p>
+                {%- endfor %}
+            {%- endfor %}
+        </div>
+    </body>
+</html>

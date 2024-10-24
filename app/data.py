@@ -239,8 +239,8 @@ class _DataTable:
 
         if not self.__check_columns(entry):  # check if the columns of the entry match the data table
             raise error.DataMismatchError(f'Error in check_columns: {entry.index} does not match {self._data.columns}')
-        elif self._definition.is_main_table():
-            # table is main table, so it has a column ID
+        elif self._definition.has_table_keys():
+            # table has column 'ID', so ID is the index
             if entry['ID'] in self._data.index:  # check if ID is in table
                 self._data.drop(self._data[self._data.index == entry['ID']].index, axis='rows', inplace=True)
             else:
@@ -658,6 +658,80 @@ class DatabaseConnector:
                 if top_table == relation_table:
                     return column
         return ''
+
+    def get_data_top_down(self, main_table_name: str, main_table_id: list, table_blacklist=None) -> dict:
+        """Retrieve all the data of a table from top down according to the relations.
+        All table data will be stored in a dictionary that is returned.
+
+        :param main_table_name: name of the main table to start the data selection
+        :param main_table_id: list of IDs of the main table that shall be selected
+        :param table_blacklist: blacklist of table names that should not be processed (needed for recursion)
+        :return: dictionary of table names and corresponding table data according to the selected main IDs
+        """
+
+        # create blacklist if not given - the blacklisted tables should not be processed anymore
+        if table_blacklist is None:
+            table_blacklist = []
+
+        return_table = {}  # create empty dict to return at the end
+
+        # retrieve main table data and insert into dict
+        main_table_data = self.lookup_entry_in_table(main_table_name, 'ID', main_table_id)
+
+        table_blacklist.append(main_table_name)  # main table should not be processed another time
+
+        children = {}  # create empty dict for the children
+
+        if not self.is_sub_table(main_table_name):  # don't process children if it is a subordinate table
+            # setup children dict
+            for main_id in main_table_id:
+                children[main_id] = []
+
+            # retrieve main table relations and process children
+            main_table_relations = self.get_table_relations(main_table_name)
+            for rel_table_name, rel_key_name in main_table_relations.items():
+                if rel_table_name in table_blacklist:
+                    continue  # stop processing this table as it has already been processed
+                if not self.is_top_table(rel_table_name, main_table_name):
+                    continue  # stop processing this relation table if the current main table is not the top table of it
+
+                # lookup the relation table entries for the given main IDs
+                relation_table = self.lookup_table_by_relation(main_table_id, main_table_name, rel_table_name)
+
+                table_blacklist.append(rel_table_name)  # relation table should not be processed in the next object
+
+                # retrieve column relations and recursively retrieve the data below
+                column_relations = self.get_column_relations(rel_table_name)
+                for column, sub_table in column_relations.items():
+                    if column == rel_key_name:
+                        continue  # the main key should not be processed
+                    else:
+                        # recursively retrieve the tables below the current table
+                        sub_data = self.get_data_top_down(sub_table, relation_table[column].to_list(), table_blacklist)
+                        for main_id in main_table_id:
+                            selected_relation_data = relation_table.loc[
+                                relation_table[self.get_top_table_key(rel_table_name)] == main_id]
+
+                            # insert the children into the dict corresponding to the main id
+                            for key, row in selected_relation_data.iterrows():
+                                child = {row[column]: sub_data[row[column]]}
+                                if len(children[main_id]) == 0:
+                                    children[main_id] = [child]
+                                else:
+                                    children[main_id].append(child)
+
+        # build the final dict entry to return that contains the children if there are any
+        for main_id in main_table_id:
+            # iloc[0] is necessary here as a Series object needs to be retrieved, not Dataframe
+            selected_main_data = main_table_data.loc[main_table_data['ID'] == main_id].iloc[0]
+            if len(children.keys()) > 0:
+                # children exist
+                return_table[main_id] = [main_table_name, selected_main_data, children[main_id]]
+            else:
+                # no children
+                return_table[main_id] = [main_table_name, selected_main_data, None]
+
+        return return_table
 
 
 def _read_db_definition(db_def):

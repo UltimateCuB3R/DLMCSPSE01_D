@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 from PyQt5.QtPrintSupport import QPrinter  # QPrintDialog, QPrintPreviewDialog
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 import xml.etree.ElementTree as ElTr
 import error
 import sys
@@ -35,9 +36,12 @@ class _MainWindow(QMainWindow):
         self.setWindowTitle('sportApp - main')  # set the main window title
 
         self.main_layout = self.horizontalLayout_main_widget
-        self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left.ui'))  # load left main widget
+        # self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left.ui'))  # load left main widget
+        # self.main_left_2 = uic.loadUi(os.path.join(path, 'view\\main_left_2.ui'))  # load left main widget
+        self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left_2.ui'))  # load left main widget
         self.main_right = uic.loadUi(os.path.join(path, 'view\\main_right.ui'))  # load right main widget
         self.main_layout.addWidget(self.main_left)  # add left main widget to the layout
+        # self.main_layout.addWidget(self.main_left_2)  # add left main widget to the layout
         self.main_layout.addWidget(self.main_right)  # add right main widget to the layout
         self.main_display = True  # main display is active
 
@@ -50,6 +54,42 @@ class _MainWindow(QMainWindow):
             except FileNotFoundError:
                 # file could not be found, so widget cannot be loaded
                 continue
+
+            # set the icon for all buttons of the detail widgets
+            for button in self.detail_widgets[name].findChildren(QPushButton):
+                self.__set_button_icon(button)
+
+        # set the icon for all buttons on the main widget
+        for button in self.findChildren(QPushButton):
+            self.__set_button_icon(button)
+
+    def __set_button_icon(self, button):
+        """Set the icon of a button corresponding to the button name
+
+        :param button: pushButton for that the icon needs to be set
+        :return: None
+        """
+
+        if 'create' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_FileIcon')))
+        elif 'cancel' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogCancelButton')))
+        elif 'display' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_FileLinkIcon')))
+        elif 'search' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_FileDialogContentsView')))
+        elif 'edit' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogResetButton')))
+        elif 'export' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DriveFDIcon')))
+        elif 'print' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DriveFDIcon')))
+        elif 'save' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogSaveButton')))
+        elif 'revert' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_BrowserReload')))
+        elif 'delete' in button.objectName():
+            button.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogDiscardButton')))
 
     def switch_main_widget(self, name=None):
         """Switch the main widget to a table specific widget if given - else switch back to the initial main widget
@@ -111,6 +151,7 @@ class MainApplication(QApplication):
 
     _main_window: _MainWindow
     _gui_def: dict[str, list]
+    _translation: dict
 
     def __init__(self, tables, gui_def, path, *args, **kwargs):
         """Initialize the MainApplication and set the main window
@@ -126,6 +167,8 @@ class MainApplication(QApplication):
         self._main_window = _MainWindow(tables, path)  # create the main window
         self._main_window.show()  # show the main window and all its content
         self._gui_def = _read_gui_definition(gui_def)  # read the GUI definition from the xml file
+        self._translation = _read_translations(os.path.join(path, 'view/dictionary_de.txt'))
+        self.setStyle('Fusion')  # different style for better readability
 
     def _set_field_editable(self, field_name, editable):
         """Set a given field to be editable or not
@@ -139,6 +182,23 @@ class MainApplication(QApplication):
         field = self.get_current_widget().findChild(QObject, field_name)
         field.setReadOnly(not editable)
 
+    def connect_table_click(self, action):
+        """Connect the double click on a table to the corresponding method
+
+        :param action: method to be connected to double-clicking a table
+        :return: None
+        """
+        table_widgets = self.get_main_left().findChildren(QTableWidget)
+        for widget in table_widgets:
+            widget_clicked = widget.objectName()
+            if 'tableMain' in widget_clicked:
+                widget.doubleClicked.connect(self._make_widget_action(action, widget_clicked))
+
+        # connect search table click
+        widget = self._main_window.detail_widgets['search'].tableWidget_search
+        widget_clicked = widget.objectName()
+        widget.doubleClicked.connect(self._make_widget_action(action, widget_clicked))
+
     def connect_create(self, action):
         """Connect the create button of the main widget to the corresponding method
 
@@ -146,7 +206,26 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        self.get_main_left().pushButton_create.clicked.connect(action)
+        buttons = self.get_main_left().findChildren(QPushButton)
+        for button in buttons:
+            button_clicked = button.objectName()
+            if 'create' in button_clicked:
+                button.clicked.connect(self._make_widget_action(action, button_clicked))
+
+    @staticmethod
+    def _make_widget_action(action, name):
+        """Function factory to give the widget name into the given function
+
+        :param action: function to be called
+        :param name: parameter to be given to the called function
+        :return: a function that is called with the given parameter
+        """
+
+        #
+        def widget_action():
+            action(name)
+
+        return widget_action
 
     def connect_display(self, tables, action):
         """Connect the display button of all specified widgets to the corresponding method
@@ -182,7 +261,13 @@ class MainApplication(QApplication):
 
         for table in tables:  # iterate through all given table
             if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
-                self._main_window.detail_widgets[table].pushButton_export.clicked.connect(action)
+                self._main_window.detail_widgets[table].pushButton_export.clicked.connect(
+                    self._make_widget_action(action, table))
+
+        for button in self._main_window.main_left.findChildren(QPushButton):
+            if 'export' in button.objectName():
+                table = button.objectName().split('_')[1]
+                button.clicked.connect(self._make_widget_action(action, table))
 
     def connect_print(self, tables, action):
         """Connect the print button of all specified widgets to the corresponding method
@@ -203,7 +288,11 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        self.get_main_left().pushButton_search.clicked.connect(action)
+        buttons = self.get_main_window().findChildren(QPushButton)
+        for button in buttons:
+            button_clicked = button.objectName()
+            if 'search' in button_clicked:
+                button.clicked.connect(self._make_widget_action(action, button_clicked))
 
     def connect_commit(self, action):
         """Connect the commit button of the main widget to the corresponding method
@@ -247,6 +336,18 @@ class MainApplication(QApplication):
             if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
                 self._main_window.detail_widgets[table].pushButton_save.clicked.connect(action)
 
+    def connect_delete(self, tables, action):
+        """Connect the delete button of all table widgets to the corresponding method
+
+        :param tables: list of table names that correspond to widgets
+        :param action: method to be connected to the delete button
+        :return: None
+        """
+
+        for table in tables:  # iterate through all given tables
+            if table in self._main_window.detail_widgets.keys():  # check if table has a widget defined
+                self._main_window.detail_widgets[table].pushButton_delete.clicked.connect(action)
+
     def enable_save_button(self, enabled):
         """Enable or disable the save button of the current widget
 
@@ -257,6 +358,17 @@ class MainApplication(QApplication):
         if not self.get_main_display():  # check if the main display is not active
             # enable the save button of the current widget
             self.get_current_widget().pushButton_save.setEnabled(enabled)
+
+    def enable_delete_button(self, enabled):
+        """Enable or disable the delete button of the current widget
+
+        :param enabled: state of the delete button
+        :return: None
+        """
+
+        if not self.get_main_display():  # check if the main display is not active
+            # enable the delete button of the current widget
+            self.get_current_widget().pushButton_delete.setEnabled(enabled)
 
     def _enable_global_buttons(self, enabled):
         """Enable or disable the global buttons
@@ -370,7 +482,7 @@ class MainApplication(QApplication):
         """
 
         # find the table widget in the current widget with the given name
-        table_widget = self.get_current_widget().findChild(QTableWidget, table_widget_name)
+        table_widget = self._main_window.findChild(QTableWidget, table_widget_name)
 
         if table_widget is not None:  # check if a table widget was found
             rows = self._get_selection_of_widget(table_widget)  # retrieve the selected rows
@@ -399,15 +511,34 @@ class MainApplication(QApplication):
             # no table widget with the given name could be found
             raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
-    def init_main_widget(self, combobox):
+    def init_main_widget(self, tables, table_data):
         """Initialize the main widget with values
 
-        :param combobox: values of tables that need to be added to the main combobox
+        :param tables: values of tables that need to be processed
+        :param table_data: dictionary of table data
         :return: None
         """
 
-        # Set Table Combobox
-        self.get_main_left().comboBox_tables.addItems(combobox)
+        for table in tables:
+            table_widget = self.get_main_left().findChild(QTableWidget, 'tableMain_' + table.lower())
+            self._set_table_widget(table_widget, table_data[table], 2)
+            self._set_table_widget_selection(table_widget, [])
+
+    def ask_user_confirmation(self, title, message):
+        """Ask the user for confirmation of a message
+
+        :param title: header title of the dialog
+        :param message: text to be displayed
+        :return: True if answer_yes was chosen
+        """
+
+        answer = QMessageBox.question(self.get_current_widget(), title, message,
+                                      QMessageBox.Yes | QMessageBox.No)
+
+        if answer == QMessageBox.Yes:
+            return True
+        else:
+            return False
 
     def send_critical_message(self, message):
         """Send a critical message to the user and block the current widget until the message is confirmed
@@ -427,8 +558,7 @@ class MainApplication(QApplication):
 
         QMessageBox.information(self.get_current_widget(), 'INFORMATION', message)
 
-    @staticmethod
-    def _set_table_widget(table_widget, table_data):
+    def _set_table_widget(self, table_widget, table_data, max_columns=0):
         """Set the contents of the table widget to the given table data
 
         :param table_widget: QTableWidget object
@@ -438,17 +568,26 @@ class MainApplication(QApplication):
 
         # set the main settings of the table widget corresponding to the given data
         table_widget.setRowCount(len(table_data.index))
-        table_widget.setColumnCount(len(table_data.columns))
-        table_widget.setHorizontalHeaderLabels(table_data.columns.to_list())
+        if max_columns == 0:
+            table_widget.setColumnCount(len(table_data.columns))
+        else:
+            table_widget.setColumnCount(max_columns)
+
+        header_list = []
+        for header_text in table_data.columns.to_list():
+            header_list.append(self.translate_text(header_text))
+        table_widget.setHorizontalHeaderLabels(header_list)
 
         index = 0
         for key, row in table_data.iterrows():  # iterate through the given data
             col_index = 0
             for column in table_data.columns:  # iterate through the columns
-                # create a widget item and set it to the corresponding row/column
-                table_widget.setItem(index, col_index, QTableWidgetItem(str(row[column])))
-                col_index += 1
+                if max_columns == 0 or col_index < max_columns:
+                    # create a widget item and set it to the corresponding row/column
+                    table_widget.setItem(index, col_index, QTableWidgetItem(str(row[column])))
+                    col_index += 1
             index += 1
+        table_widget.resizeColumnsToContents()
 
     @staticmethod
     def _set_table_widget_selection(table_widget, table_rows):
@@ -496,7 +635,11 @@ class MainApplication(QApplication):
                 # if the table widget name matches the given table name, the given table data can be set
                 try:
                     self._set_table_widget(table_widget, table_data)
-                    table_widget.setEnabled(editable)  # enable that the widget can be edited
+                    # table_widget.setEnabled(editable)  # enable that the widget can be edited
+                    if editable:
+                        table_widget.setSelectionMode(QAbstractItemView.MultiSelection)
+                    else:
+                        table_widget.setSelectionMode(QAbstractItemView.NoSelection)
                 except AttributeError:
                     # an error occurred when trying to set the table widget
                     self.send_critical_message('Fehler beim Setzen der Beziehungstabellen!')
@@ -534,6 +677,15 @@ class MainApplication(QApplication):
         table_widget = self.get_current_widget().findChild(QTableWidget)
 
         self._set_table_widget(table_widget, table_data)  # set the table widget to the given data
+        self._set_table_widget_selection(table_widget, [])  # clear the table widget selection
+        self.set_label_table_name(table_name)  # set the table name
+
+    def set_label_table_name(self, table_name):
+        """Set the label_table_name to the given name.
+
+        :param table_name: name of the table
+        :return: None
+        """
         self.get_current_widget().label_table_name.setText(table_name)  # set the table name
 
     def get_item_of_table_widget(self, widget_name, row, column) -> str:
@@ -571,7 +723,7 @@ class MainApplication(QApplication):
             # field type is unknown, so no data can be retrieved
             self.send_critical_message('Fehler beim Lesen der Felder im aktuellen Widget!')
 
-    def set_fields_of_current_widget(self, table_name, row_data, editable=True):
+    def set_fields_of_current_widget(self, table_name, row_data=None, editable=True):
         """Set all fields of the current widget to the corresponding value from the given data
 
         :param table_name: name of the table that is currently displayed
@@ -582,7 +734,8 @@ class MainApplication(QApplication):
 
         fields = self.get_gui_definition()[table_name][1]  # get the fields of the given table
         for field in fields.keys():  # iterate through all fields and set the data
-            self.set_field_in_current_widget(fields[field], row_data[field])
+            if row_data is not None:
+                self.set_field_in_current_widget(fields[field], row_data[field])
             self._set_field_editable(fields[field], editable)
 
     def set_field_in_current_widget(self, field_name, field_data):
@@ -665,7 +818,9 @@ class MainApplication(QApplication):
         :return: None
         """
 
-        header_labels = ['Objekt'] + header
+        header_labels = ['Objekt']
+        for header_text in header:
+            header_labels.append(self.translate_text(header_text))
         self._set_tree_structure(self.get_current_widget().treeWidget, tree_items, header_labels, 6, expand_all)
 
     def get_current_tree_widget(self):
@@ -686,22 +841,83 @@ class MainApplication(QApplication):
         header_labels = ['Objekt', 'ID', '', '', '', '']
         self._set_tree_structure(self._main_window.main_right.treeWidget, tree_items, header_labels, 6, False)
 
-    def print_widget(self):
-        """Print the current widget as a viewable file
+    def set_html_view(self, html):
+        """Create a new html view, set the given html and display it.
+
+        :param html: String of html code to be displayed.
+        :return: None
+        """
+
+        self.clear_html_view()  # find the previous view and clear it
+
+        # hide the tree widget to display the new html view
+        self.get_current_tree_widget().hide()
+        html_view = QWebEngineView(self.get_current_widget())
+        html_view.setMinimumHeight(800)
+        self.get_current_widget().contentLayout.addWidget(html_view)
+
+        html_view.setHtml(html)
+        html_view.show()
+
+    def clear_html_view(self):
+        """Clear the html view if possible.
+
+        :return: True if a html view was found and removed, False if nothing was found.
+        """
+
+        # find the html view and destroy it
+        old_view = self.get_current_widget().findChild(QWebEngineView)
+        if old_view is not None:
+            self.get_current_widget().contentLayout.removeWidget(old_view)
+            old_view.hide()
+            old_view.deleteLater()
+            return True
+
+        # no view was found
+        return False
+
+    def print_widget_pdf(self):
+        """Print the QWebEngineView as a pdf file
+
+        :return: True if the print dialog was successful, False if not
+        """
+
+        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None,
+                                                  'PDF files (.pdf);All Files()')
+        if filename != '':
+            if QFileInfo(filename).suffix() == '':
+                filename += '.pdf'
+            html_view = self.get_current_widget().findChild(QWebEngineView)
+            html_view.page().printToPdf(filename)
+            return True
+        return False
+
+    def print_widget_jpg(self):
+        """Print the current widget as a jpg file
 
         :return: None
         """
 
-        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export PDF', None, 'PDF files (.pdf);;All Files()')
+        filename, _ = QFileDialog.getSaveFileName(self._main_window, 'Export JPG', None,
+                                                  'JPG files (.jpg);All Files()')
         if filename != '':
             if QFileInfo(filename).suffix() == '':
-                filename += '.pdf'
+                filename += '.jpg'
             printer = QPrinter(QPrinter.HighResolution)
             printer.setOutputFormat(QPrinter.PdfFormat)
             printer.setOutputFileName(filename)
-            # self.get_current_widget().document().print_(printer)
-            self.primaryScreen().grabWindow(self.get_current_tree_widget().winId()).save(f'{filename}.jpg', 'jpg')
-            # self.get_current_widget().render(QPainter(printer))
+            self.primaryScreen().grabWindow(self.get_current_tree_widget().winId()).save(filename, 'jpg')
+
+    def translate_text(self, input_text) -> str:
+        """Translate a given text according to the stored translations
+
+        :param input_text: text to be translated
+        :return: translated text or input text if no translation was found
+        """
+        if input_text in self._translation.keys():
+            return self._translation[input_text]
+        else:
+            return input_text
 
     def start_application(self):
         """Start the application
@@ -745,3 +961,18 @@ def _read_gui_definition(gui_def) -> dict:
         def_gui[table] = [name, fields, tables]
 
     return def_gui
+
+
+def _read_translations(translation_file) -> dict:
+    """Read the translations from the given file into a translation dictionary.
+    The assignments in the file need to be separated by '='
+
+    :param translation_file: file that stores the translations
+    :return: dictionary of the translation assignments
+    """
+
+    translation_dict = {}
+    for line in open(translation_file).readlines():
+        line_data = line.split('=')
+        translation_dict[line_data[0]] = line_data[1]
+    return translation_dict

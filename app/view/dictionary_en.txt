@@ -1,0 +1,10 @@
+PLAN=Plan
+UNIT=Unit
+EXERCISE=Exercise
+CATEGORY=Category
+RESOURCE=Resource
+NAME=Name
+DESCRIPTION=Description
+DURATION=Duration
+VIDEO_URL=Video Link
+COLOR=Color
