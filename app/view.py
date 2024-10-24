@@ -478,10 +478,11 @@ class MainApplication(QApplication):
     def get_selected_rows_of_widget(self, table_widget_name) -> list:
         """Retrieve the selected row indices of the given table widget.
 
+        :param table_widget_name: name of the table widget
         :return: list of row indices that are selected
         """
 
-        # find the table widget in the current widget with the given name
+        # find the table widget in the main window with the given name
         table_widget = self._main_window.findChild(QTableWidget, table_widget_name)
 
         if table_widget is not None:  # check if a table widget was found
@@ -492,8 +493,9 @@ class MainApplication(QApplication):
             raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
     def get_unselected_rows_of_widget(self, table_widget_name) -> list:
-        """Retrieve the unselected row indices of the given table widget.
+        """Retrieve the unselected row indices of the given table widget in the current widget.
 
+        :param table_widget_name: name of the table widget
         :return: list of row indices that are unselected
         """
 

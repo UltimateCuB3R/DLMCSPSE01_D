@@ -477,7 +477,7 @@ class MainControl:
 
         for relation_widget_name in relation_tables.keys():  # iterate through all relation widgets
             # get selected rows of widget with name relation_widget_name
-            selected_rows = self.main_app.get_selected_rows_of_widget(relation_widget_name)
+            selected_rows = self.main_app.get_selected_rows_of_current_widget()[relation_widget_name]
             # build relation table entries
             rel_table_name = relation_tables[relation_widget_name][0]  # name of relation table
             main_id_name = relation_tables[relation_widget_name][1]  # primary key name
