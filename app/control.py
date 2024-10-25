@@ -647,7 +647,7 @@ class MainControl:
                         child_items.append(self._build_tree_item(child_content))
 
         # finally create the top item with all child items and return
-        return self.main_app.create_tree_item(name, item_data.to_list(), child_items)
+        return self.main_app.create_tree_item(self.main_app.translate_text(name), item_data.to_list(), child_items)
 
     def _delete_entry(self, table_name, data_entry) -> int:
         """Delete an entry from the table.

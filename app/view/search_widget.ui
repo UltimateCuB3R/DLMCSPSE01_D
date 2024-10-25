@@ -67,7 +67,7 @@
      <item row="1" column="1">
       <widget class="QTreeWidget" name="treeWidget">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="font">
         <font>
@@ -77,11 +77,17 @@
        <property name="editTriggers">
         <set>QAbstractItemView::NoEditTriggers</set>
        </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::NoSelection</enum>
+       </property>
+       <property name="selectionBehavior">
+        <enum>QAbstractItemView::SelectItems</enum>
+       </property>
        <property name="animated">
         <bool>true</bool>
        </property>
        <property name="wordWrap">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="columnCount">
         <number>10</number>
@@ -144,7 +150,7 @@
      <item row="1" column="0">
       <widget class="QLabel" name="label_tree">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="font">
         <font>
