@@ -36,12 +36,9 @@ class _MainWindow(QMainWindow):
         self.setWindowTitle('sportApp - main')  # set the main window title
 
         self.main_layout = self.horizontalLayout_main_widget
-        # self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left.ui'))  # load left main widget
-        # self.main_left_2 = uic.loadUi(os.path.join(path, 'view\\main_left_2.ui'))  # load left main widget
         self.main_left = uic.loadUi(os.path.join(path, 'view\\main_left_2.ui'))  # load left main widget
         self.main_right = uic.loadUi(os.path.join(path, 'view\\main_right.ui'))  # load right main widget
         self.main_layout.addWidget(self.main_left)  # add left main widget to the layout
-        # self.main_layout.addWidget(self.main_left_2)  # add left main widget to the layout
         self.main_layout.addWidget(self.main_right)  # add right main widget to the layout
         self.main_display = True  # main display is active
 
@@ -431,7 +428,7 @@ class MainApplication(QApplication):
 
         try:
             # retrieve the name of the currently displayed table
-            return self.get_current_widget().label_table_name.text()
+            return self.translate_text_reverse(self.get_current_widget().label_table_name.text())
         except AttributeError:
             # label is not available in the current widget
             self.send_critical_message('Fehler beim Lesen der aktuell angezeigten Tabelle (label_table_name)')
@@ -478,10 +475,11 @@ class MainApplication(QApplication):
     def get_selected_rows_of_widget(self, table_widget_name) -> list:
         """Retrieve the selected row indices of the given table widget.
 
+        :param table_widget_name: name of the table widget
         :return: list of row indices that are selected
         """
 
-        # find the table widget in the current widget with the given name
+        # find the table widget in the main window with the given name
         table_widget = self._main_window.findChild(QTableWidget, table_widget_name)
 
         if table_widget is not None:  # check if a table widget was found
@@ -492,8 +490,9 @@ class MainApplication(QApplication):
             raise error.WidgetNotKnownError(f'Widget {table_widget_name} is not known in current widget!')
 
     def get_unselected_rows_of_widget(self, table_widget_name) -> list:
-        """Retrieve the unselected row indices of the given table widget.
+        """Retrieve the unselected row indices of the given table widget in the current widget.
 
+        :param table_widget_name: name of the table widget
         :return: list of row indices that are unselected
         """
 
@@ -686,7 +685,9 @@ class MainApplication(QApplication):
         :param table_name: name of the table
         :return: None
         """
-        self.get_current_widget().label_table_name.setText(table_name)  # set the table name
+
+        # set the translated table name
+        self.get_current_widget().label_table_name.setText(self.translate_text(table_name))
 
     def get_item_of_table_widget(self, widget_name, row, column) -> str:
         """Get the item of a table widget in a specific row and column as text
@@ -919,6 +920,14 @@ class MainApplication(QApplication):
         else:
             return input_text
 
+    def translate_text_reverse(self, input_text) -> str:
+        reverse_translation = dict(zip(self._translation.values(),self._translation.keys()))
+        if input_text in reverse_translation.keys():
+            return reverse_translation[input_text]
+        else:
+            return input_text
+
+
     def start_application(self):
         """Start the application
 
@@ -972,7 +981,7 @@ def _read_translations(translation_file) -> dict:
     """
 
     translation_dict = {}
-    for line in open(translation_file).readlines():
+    for line in open(translation_file, encoding='UTF-8').readlines():
         line_data = line.split('=')
-        translation_dict[line_data[0]] = line_data[1]
+        translation_dict[line_data[0]] = line_data[1].split('\n')[0]
     return translation_dict

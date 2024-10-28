@@ -281,7 +281,7 @@ class _DataTable:
                     raise error.KeyAlreadyExistError(f'Key {list(entry)} already exists in Dataframe!')
                 else:
                     # if table has no ID, just add the entry to the end of the Dataframe
-                    return_id = len(self._data.index)
+                    return_id = self._data.index.max() + 1  # all subsequent IDs are +1 of the max index
                     self._data.loc[return_id] = entry
         return return_id
 

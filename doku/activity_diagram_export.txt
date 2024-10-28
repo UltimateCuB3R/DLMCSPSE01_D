@@ -1,26 +1,26 @@
 @startuml
 (*) --> "Applikation starten"
---> "Objektart auswählen"
+--> "Suchen-Button eines Objektes klicken"
 note right
-  Es können alle Objektarten ausgewählt werden,
-  es sind aber nur die Haupt-Objekte für diese Aktivität sinnvoll,
+  Es können alle Objekte ausgewählt werden,
+  es sind aber nur die Haupt-Objekte hierfür sinnvoll,
   also EXERCISE, UNIT und PLAN.
 end note
---> "Suchen-Button klicken"
-if "Objektart" then
-  --> [EXERCISE] "Suche nach Übung"
-  --> "Auswahl einer Übung"
-  --> "Export-Button klicken"
+--> "Auswahl eines Objekteintrages"
+--> "Export-Button klicken"
+if "Objekt" then
+  --> [not PLAN] "Anzeige Baumstruktur"
+  note left
+    Export als JPG
+  end note
+  --> "Drucken-Button klicken"
 else
-  --> [UNIT] "Suche nach Einheit"
-  --> "Auswahl einer Einheit"
-  --> "Export-Button klicken"
-else
-  --> [PLAN] "Suche nach Plan"
-  --> "Auswahl eines Plans"
-  --> "Export-Button klicken"
+  --> [PLAN] "Anzeige HTML-Ansicht"
+  note right
+    Export als PDF
+  end note
+  --> "Drucken-Button klicken"
 endif
---> "Drucken-Button klicken"
 --> "Dateiname eingeben"
 --> "Datei wurde exportiert"
 --> (*)

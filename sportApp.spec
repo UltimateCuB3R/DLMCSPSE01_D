@@ -5,7 +5,7 @@ a = Analysis(
     ['app\\main.py'],
     pathex=[],
     binaries=[],
-    datas=[('app\\data\\db_def.xml', '.\\data'), ('app\\data\\main_prefilled.db', '.\\data'), ('app\\view', '.\\view')],
+    datas=[('app\\data\\db_def.xml', '.\\data'), ('app\\data\\main_prefilled.db', '.\\data'), ('app\\view', '.\\view'), ('app\\templates\\plan.jinja', '.\\templates')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
